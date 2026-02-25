@@ -1,0 +1,43 @@
+/* GLOBAL PRINT RULES */
+
+@media print {
+
+  /* Hide entire app */
+  body * {
+    visibility: hidden !important;
+  }
+
+  /* Show ONLY the ballot */
+  #printable-ballot,
+  #printable-ballot * {
+    visibility: visible !important;
+  }
+
+  /* Position ballot properly */
+  #printable-ballot {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    background: white !important;
+  }
+
+  /* Remove page background */
+  html, body {
+    background: white !important;
+  }
+
+  /* Remove shadows */
+  #printable-ballot .shadow-sm,
+  #printable-ballot .shadow-md {
+    box-shadow: none !important;
+  }
+
+  /* A4 formatting */
+  @page {
+    size: A4;
+    margin: 20mm;
+  }
+}

@@ -6,12 +6,32 @@
     </p>
 
     <form class="mt-6 space-y-4" @submit.prevent="submit">
+      <div v-if="props.resendMessage"
+        class="rounded-lg bg-blue-50 border border-yellow-200 text-blue-700 px-4 py-3 text-sm"
+      >
+        {{ props.resendMessage }}
+      </div>
+      <div
+        v-if="props.isResendConfirmation"
+        class="rounded-lg bg-yellow-50 border border-yellow-200 text-yellow-700 px-4 py-3 text-sm"
+      >
+        Please confirm your email.
+        To re-send confirmation email please
+        <button
+          type="button"
+          class="font-semibold underline hover:text-yellow-900 ml-1"
+          @click="resend"
+          :disabled="props.isLoading"
+        >
+          click here
+        </button>
+      </div>
       <div v-if="props.errorMessage"
        class="rounded-lg bg-red-100 border border-red-300 text-red-700 px-4 py-2 text-sm">
         {{ props.errorMessage }}
       </div>
       <div>
-        <label class="text-sm font-medium text-slate-700">Member ID</label>
+        <label class="text-sm font-medium text-slate-700">Member No</label>
         <input
           v-model="form.memberNo"
           type="text"
@@ -74,7 +94,7 @@
           Remember me
         </label>
 
-        <a href="#" class="text-sm font-medium text-blue-600 hover:text-blue-700">
+        <a href="#" @click="forgotPasword" class="text-sm font-medium text-blue-600 hover:text-blue-700">
           Forgot Password?
         </a>
       </div>
@@ -88,8 +108,8 @@
       </button>
 
       <p class="pt-2 text-center text-sm text-slate-600">
-        Not a member yet?
-        <a href="#" class="font-semibold text-blue-600 hover:text-blue-700">Apply for Membership</a>
+        Don't have an account?
+        <a href="#" class="font-semibold text-blue-600 hover:text-blue-700" @click="registerForm">Register Now</a>
       </p>
     </form>
 
@@ -103,7 +123,9 @@ import { reactive, ref, watch } from "vue";
 
 const props = defineProps<{
   errorMessage: string | null;
+  resendMessage: string | null;
   isLoading: boolean;
+  isResendConfirmation: boolean;
 }>();
 
 type LoginPayload = {
@@ -115,6 +137,9 @@ type LoginPayload = {
 const emit = defineEmits<{
   (e: "submit", payload: LoginPayload): void;
   (e: "clear-error"): void;
+  (e: "toggle-form"): void;
+  (e: "toggle-passwordForm"): void;
+  (e: "resend-confirmation", memberNo: string): void;
 }>();
 
 const form = reactive<LoginPayload>({
@@ -132,5 +157,20 @@ const showPassword = ref(false);
 
 function submit() {
   emit("submit", { ...form });
+}
+
+function resend () {
+  emit('resend-confirmation', form.memberNo);
+}
+
+function registerForm() {
+  emit("clear-error");
+  emit('toggle-form');
+
+}
+
+function forgotPasword() {
+  emit("clear-error");
+  emit("toggle-passwordForm");
 }
 </script>

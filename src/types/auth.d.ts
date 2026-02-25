@@ -14,7 +14,8 @@ export interface RegisterPayload {
   memberNo: string;
   memberName: string;
   email: string;
-  branch:  string;
+  password: string;
+  branch?:  string;
 }
 
 export interface User {

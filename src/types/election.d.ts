@@ -3,6 +3,7 @@ export interface Election {
   from: string;
   to: string;
   start: boolean;
+  hasVoted: boolean;
   elecom?: string;
 }
 

@@ -108,7 +108,7 @@
                     <button
                       type="button"
                       class="grid h-10 w-10 place-items-center rounded-xl text-slate-400 hover:bg-slate-100 hover:text-slate-600"
-                      @click="removeCandidate(c.id)"
+                      @click="removeCandidate(c.id, c.memberNo)"
                       title="Delete"
                     >
                       <svg viewBox="0 0 24 24" class="h-5 w-5" fill="none" stroke="currentColor" stroke-width="2">
@@ -168,7 +168,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from "vue";
 import CandidateModal, { type Candidate } from "@/pages/component/Dashboard/Modal/CandidateModal.vue";
-import { newCandidates, fetchCandidates, updateCandidate } from "@/services/election.sevice";
+import { newCandidates, fetchCandidates, updateCandidate,deleteCandidate } from "@/services/election.sevice";
 import { useElectionStore } from "@/stores/election";
 import { useAuthStore } from "@/stores/auth";
 
@@ -203,9 +203,21 @@ function closeModal() {
   selected.value = null;
 }
 
-function removeCandidate(id: string) {
+async function removeCandidate(id: string, memberNo: string ) {
   if (!confirm("Delete this candidate?")) return;
-  candidates.value = candidates.value.filter((c) => c.id !== id);
+  try {
+    const year = electionStore.year;
+    const token = authStore.accessToken;
+
+    const response = await deleteCandidate(id, memberNo, year, token);
+    if(!response.data.success) {
+      console.log(response.data.message);
+    }
+    candidates.value = candidates.value.filter((c) => c.id !== id);
+  } catch (error) {
+    console.log(error);
+  }
+  
 }
 
 function generateCandidateId(length = 10): string {

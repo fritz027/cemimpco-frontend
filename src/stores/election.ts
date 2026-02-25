@@ -9,6 +9,7 @@ export const useElectionStore = defineStore("election", {
     from: '2025-01-10',
     to: '2025-01-10',
     start: false,
+    hasVoted: false,
     elecom: "",
   }),
   persist: true,
@@ -18,6 +19,7 @@ export const useElectionStore = defineStore("election", {
     getDateTo: (state) => state.to,
     getStartElection: (state) => state.start,
     getElecoms: (state) => state.elecom,
+    getHasVoted: (state) => state.hasVoted,
   },
 
   actions: {
@@ -33,8 +35,14 @@ export const useElectionStore = defineStore("election", {
     setStartElection(start: boolean){
       this.start = start;
     },
+    setHasVoted(hasVoted: boolean){
+      this.hasVoted = hasVoted;
+    },
     setElecoms(elecoms: string){
       this.elecom = elecoms
+    },
+    logout() {
+      this.hasVoted = false;
     }
   },
 });

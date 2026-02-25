@@ -74,12 +74,40 @@
                 </label>
 
                 <button
-                  type="button"
-                  class="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-700 active:bg-blue-800 disabled:cursor-not-allowed disabled:opacity-50"
-                  :disabled="!canSubmit || submitting"
                   @click="castVote"
+                  :disabled="submitting || !canSubmit"
+                  class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md
+                        hover:bg-[#2f8fd2] active:scale-[0.99] transition
+                        disabled:opacity-60 disabled:cursor-not-allowed
+                        flex items-center justify-center gap-2"
                 >
-                  {{ submitting ? "Submitting..." : "Cast Final Vote" }}
+                  <!-- Spinner -->
+                  <svg
+                    v-if="submitting"
+                    class="animate-spin h-5 w-5 text-white"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      class="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      stroke-width="4"
+                    ></circle>
+                    <path
+                      class="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8v8H4z"
+                    ></path>
+                  </svg>
+
+                  <!-- Text -->
+                  <span>
+                    {{ submitting ? "Submitting..." : "Submit Vote" }}
+                  </span>
                 </button>
 
                 <p v-if="submitError" class="mt-3 text-xs text-red-600">{{ submitError }}</p>
@@ -96,6 +124,37 @@
         </aside>
       </div>
     </div>
+    <div
+      v-if="submitting"
+      class="fixed inset-0 bg-black/40 backdrop-blur-sm flex items-center justify-center z-50"
+    >
+      <div class="bg-white rounded-2xl px-8 py-6 shadow-xl text-center">
+        <svg
+          class="animate-spin h-8 w-8 text-blue-600 mx-auto"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v8H4z"
+          ></path>
+        </svg>
+
+        <p class="mt-4 font-semibold text-slate-800">
+          Processing your vote...
+        </p>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -103,6 +162,7 @@
 import { computed, onMounted, reactive, ref } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useElectionStore } from "@/stores/election";
+import { useRouter } from "vue-router";
 
 import CommitteeSection, { type Candidate as UiCandidate } from "@/pages/component/Vote/CommitteeSection.vue";
 import BallotGroup from "@/pages/component/Vote/BallotGroup.vue";
@@ -118,6 +178,7 @@ type PositionRow = {
 
 const authStore = useAuthStore();
 const electionStore = useElectionStore();
+const router = useRouter();
 
 const loading = ref(false);
 const error = ref<string | null>(null);
@@ -280,6 +341,13 @@ async function castVote() {
 
     confirmed.value = false;
 
+    setTimeout( async () => {
+      submitting.value=false;
+      await router.push({
+        name: "VoteConfirmation"
+      })
+    }, 1000);
+
   } catch (err: any) {
     submitError.value =
       err.response?.data?.message ||
@@ -287,6 +355,7 @@ async function castVote() {
       "Failed to submit vote.";
   } finally {
     submitting.value = false;
+
   }
 }
 </script>

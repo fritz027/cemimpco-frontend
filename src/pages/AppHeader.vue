@@ -18,7 +18,7 @@ const showChangePasswordModal = ref(false);
 const urlLogo = bg;
 
 const menu: MenuItem[] = [
-  { label: "Election", to: "/overview" },
+  { label: "Elecom", to: "/overview" },
 ];
 
 const memberName = computed(() => authStore.member?.name || "");
@@ -73,6 +73,7 @@ function handleChangePassword() {
 
 async function handleLogout() {
   close();
+  electionStore.logout();
   authStore.logout(); // <-- adjust if your store uses different name
 }
 </script>

@@ -113,7 +113,7 @@ async function saveSetting() {
 
 <template>
   <!-- Make page fill available area and scroll inside -->
-  <div class="h-[calc(100dvh-0px)] min-h-0 bg-slate-50/60">
+  <div class="h-full   min-h-0 bg-slate-50/60">
     <!-- Scroll container -->
     <div class="h-full overflow-y-auto">
       <div class="mx-auto max-w-6xl px-3 py-4 sm:px-6 lg:px-8">

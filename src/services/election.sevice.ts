@@ -117,3 +117,27 @@ export const submitVote = async (
 
   return res.data;
 };
+
+export const memberVoted = (year: number, token: string) => {
+  return api.get(`/election/is-voted?year=${year}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+  });
+} 
+
+export const getMemberVoteCasted = (year: number, token: string) => {
+  return api.get(`/election/${year}/ballot`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+  });
+}
+
+export const getElectionStatus = (year: number, token: string) => {
+  return api.get(`/election/${year}/status`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+  });
+}

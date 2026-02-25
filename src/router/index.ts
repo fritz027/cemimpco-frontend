@@ -12,6 +12,9 @@ import Position from '@/pages/component/Dashboard/Position.vue';
 import Candidate from '@/pages/component/Dashboard/Candidate.vue';
 import Access from '@/pages/component/Dashboard/Access.vue';
 import BallotPage from '@/pages/BallotPage.vue';
+import VoteConfirmation from '@/pages/component/Dashboard/VoteConfirmation.vue';
+import ConfirmPage from '@/pages/confirmPage.vue';
+import ResetPassword from '@/pages/component/LoginPage/ResetPasswordPage.vue';
 import { useAuthStore } from "@/stores/auth";
 import { useElectionStore } from '@/stores/election';
 
@@ -57,6 +60,25 @@ const router = createRouter({
       path: '/ballot',
       name: "BallotPage",
       component: BallotPage,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/vote-confirmation',
+      name: "VoteConfirmation",
+      component: VoteConfirmation,
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/confirm',
+      name: 'ConfirmEmail',
+      component: ConfirmPage,
+      meta: { guestOnly: true }
+    },
+    {
+      path: '/reset/password',
+      name: 'ResetPassword',
+      component: ResetPassword,
+      meta: { guestOnly: true }
     },
     {
       path: "/dashboard-elecom",

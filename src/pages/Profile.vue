@@ -3,17 +3,27 @@ import { onMounted, ref, reactive, computed } from 'vue';
 import { useRouter, isNavigationFailure, viewDepthKey } from "vue-router";
 import { useAuthStore } from '@/stores/auth';
 import { memberProfile, memberDeposits, memberLoans, memberTimeDeposits } from '@/services/member.service';
-
+import { useElectionStore } from '@/stores/election';
+import { CheckBadgeIcon, ArchiveBoxIcon } from '@heroicons/vue/24/solid'
+import { memberVoted } from '@/services/election.sevice';
 
 const authStore = useAuthStore();
+const electionStore = useElectionStore();
 const router = useRouter();
+const isElection = ref(false);
+const hasVoted = ref(false);
 
 onMounted( async() => {
   try {
+    isElection.value = electionStore.start;
     await getMembersProfile();
     await getMemberTimeDeposits();
     await getMemberDeposits();
-    await getMemberLoans();
+    await getMemberLoans(); 
+    if (isElection.value) {
+      await isMemberVoted();
+    }
+     
   } catch (error) {
     console.log(error)
   }
@@ -77,6 +87,16 @@ const loans = ref<MemberLoan[]>([]);
 
 function money(n: number) {
   return new Intl.NumberFormat("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+async function isMemberVoted() {
+  try {
+    const result = await memberVoted(electionStore.year, authStore.accessToken);
+    hasVoted.value = result.data.isVoted;
+  } catch (error) {
+    hasVoted.value = false;
+    console.log(error);
+  }
 }
 
 // actions
@@ -181,6 +201,10 @@ async function Vote () {
    await router.push({ name: "BallotPage" });
 }
 
+async function VoteConfirmation() {
+  await router.push({ name: "VoteConfirmation" });
+}
+
 async function loanLedger (loanId: string) {
   try {
     await router.push({
@@ -216,13 +240,31 @@ async function viewDeposit (code: string){
   <!-- Page background (optional) -->
   <div class="min-h-screen">
     <div class="mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-6 space-y-6">
+      <div class="flex justify-center mt-8">
+  
+  <!-- Show VOTE only if election active AND user has NOT voted -->
        <button
-              @click="Vote"
-              class="h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-sm
-                     hover:bg-[#2f8fd2] active:scale-[0.99] transition"
-            >
-              VOTE
-            </button>
+          v-if="isElection && !hasVoted"
+          @click="Vote"
+          class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md
+                hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
+        >
+          <ArchiveBoxIcon class="h-5 w-5" />
+          VOTE
+        </button>
+
+        <!-- Show BALLOT if user already voted -->
+        <button
+          v-else-if="isElection && hasVoted"
+          @click="VoteConfirmation"
+          class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md
+                hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
+        >
+          <CheckBadgeIcon class="h-5 w-5" />
+          BALLOT
+        </button>
+
+      </div>
       <!-- MEMBER PROFILE -->
       <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="bg-[#3FA3E8] px-4 sm:px-6 py-4">

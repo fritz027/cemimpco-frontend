@@ -10,11 +10,11 @@
             Total Registered Voters
           </p>
           <p class="mt-2 text-2xl font-semibold text-slate-900">
-            {{ stats.registered }}
+            {{ totalRegisteredVoters }}
           </p>
         </div>
         <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-          +12% vs last year
+          <!-- +12% vs last year -->
         </span>
       </div>
     </div>
@@ -27,7 +27,7 @@
             Votes Casted
           </p>
           <p class="mt-2 text-2xl font-semibold text-slate-900">
-            {{ stats.votes }}
+            {{ totalCastedVotes }}
           </p>
         </div>
         <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
@@ -68,7 +68,7 @@
           <h2 class="text-sm font-semibold text-slate-900">
             Current Election Details
           </h2>
-          <button class="text-xs font-semibold text-blue-600 hover:text-blue-700">
+          <button @click="editDetails" class="text-xs font-semibold text-blue-600 hover:text-blue-700">
             Edit Details
           </button>
         </div>
@@ -149,14 +149,14 @@
               Voter Turnout
             </p>
             <p class="font-semibold text-slate-900">
-              {{ stats.turnout }}%
+              {{ electionTurnOut }}%
             </p>
           </div>
 
           <div class="mt-3 h-2 w-full rounded-full bg-slate-100">
             <div
               class="h-2 rounded-full bg-blue-600"
-              :style="{ width: stats.turnout + '%' }"
+              :style="{ width: electionTurnOut + '%' }"
             />
           </div>
 
@@ -166,7 +166,7 @@
                 TOTAL POSITIONS
               </p>
               <p class="mt-1 text-2xl font-semibold text-slate-900">
-                {{ stats.positions }}
+                {{ totalPositions }}
               </p>
             </div>
 
@@ -175,7 +175,7 @@
                 TOTAL CANDIDATES
               </p>
               <p class="mt-1 text-2xl font-semibold text-slate-900">
-                {{ stats.candidates }}
+                {{ totalCandidates }}
               </p>
             </div>
           </div>
@@ -191,10 +191,21 @@
   </section>
 </template>
 <script setup lang="ts">
-import { computed,onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useElectionStore } from "@/stores/election";
+import { useRouter } from "vue-router";
+import { getElectionStatus } from "@/services/election.sevice";
+import { useAuthStore } from "@/stores/auth";
 
 const electionStore = useElectionStore();
+const authStore = useAuthStore();
+const router = useRouter();
+
+const totalRegisteredVoters = ref(0);
+const totalCastedVotes = ref(0);
+const totalPositions = ref(0);
+const totalCandidates = ref(0);
+const electionTurnOut = ref(0);
 
 const now = ref(Date.now());
 
@@ -242,8 +253,13 @@ const showRemaining = computed(() => {
   return electionStore.start && t >= start && t <= end;
 });
 
+onMounted(async () => {
+  await setElectionStatus();
+})
+
 
 onMounted(() => {
+
   timer = window.setInterval(() => {
     now.value = Date.now();
   }, 1000);
@@ -327,6 +343,33 @@ const election = computed(() => ({
   startDate: "Oct 24, 2024 • 08:00 AM",
   endDate: "Oct 25, 2024 • 05:00 PM",
 }));
+
+
+async function editDetails() {
+  await router.push({ name: "ElectionDate" })
+}
+
+async function setElectionStatus() {
+  try {
+    const response = await getElectionStatus(electionStore.year, authStore.accessToken);
+    if (!response.data.success) {
+      console.log(response.data.message);
+      return;
+    }
+    console.log(response.data);
+    const res = response.data
+    totalRegisteredVoters.value = res.totalRegisterVoter;
+    totalCastedVotes.value = res.totalCastedVote;
+    totalCandidates.value = res.totalCandidates;
+    totalPositions.value = res.totalPosition;
+    electionTurnOut.value =
+    res.totalRegisterVoter > 0
+      ? Number(((res.totalCastedVote / res.totalRegisterVoter) * 100).toFixed(2))
+      : 0;
+  } catch (error) {
+    console.log(error)
+  }
+}
 
 </script>
 <style lang="css" scoped></style>
