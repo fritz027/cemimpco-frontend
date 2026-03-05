@@ -1,4 +1,3 @@
-import Candidate from "@/pages/component/Dashboard/Candidate.vue";
 import api from "./api";
 import type { 
   ElectionSettingPayload, 
@@ -139,5 +138,22 @@ export const getElectionStatus = (year: number, token: string) => {
     headers: {
       Authorization: `Bearer ${token}`
     },
+  });
+}
+
+export const getElectionResult = (year: number, token: string) => {
+  return api.get(`/election/results/${year}`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+  });
+}
+
+export const printBallotPDF = (year: number, ballot: number, token: string) => {
+  return api.get(`/election/${year}/ballot/${ballot}/pdf`, {
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    responseType: 'blob',
   });
 }

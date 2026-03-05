@@ -55,8 +55,6 @@ async function fetchMemberLoan() {
       console.log(response.data.message);
       return;
     }
-
-    console.log(response.data)
     
     header.value = response.data.header;
     rows.value = response.data.details;

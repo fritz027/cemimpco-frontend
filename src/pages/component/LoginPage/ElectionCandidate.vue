@@ -4,7 +4,7 @@
     <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
       <div class="inline-flex items-center gap-3">
         <div class="rounded-xl bg-blue-600 px-5 py-3 text-lg font-semibold text-white shadow-sm">
-          {{ yearTitle }} Election Candidates
+          {{ yearTitle }} CEMIMPCO ELECTIONS
         </div>
       </div>
 

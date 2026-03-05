@@ -3,10 +3,14 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useElectionStore } from "@/stores/election";
 import bg from "@/assets/cemimpco-logo.jpg";
+import { 
+  ClipboardDocumentListIcon,
+  CheckBadgeIcon
+ } from "@heroicons/vue/24/solid";
 
 
 
-type MenuItem = { label: string; to?: string; href?: string };
+type MenuItem = { label: string; to?: string; href?: string, isVisible?: boolean, icon?: any };
 
 const authStore = useAuthStore();
 const electionStore = useElectionStore();
@@ -17,9 +21,6 @@ const showChangePasswordModal = ref(false);
 
 const urlLogo = bg;
 
-const menu: MenuItem[] = [
-  { label: "Elecom", to: "/overview" },
-];
 
 const memberName = computed(() => authStore.member?.name || "");
 
@@ -64,6 +65,19 @@ const isElecomMember = computed(() => {
   return electionStore.elecom?.includes(memberNo);
 });
 
+const menu = computed<MenuItem[]>(() => {
+  const items: MenuItem[] = [];
+
+  if (authStore.elecomUser) {
+    items.push({ label: "Elecom", to: "/overview" , icon: CheckBadgeIcon});
+  }
+
+  if (authStore.surveyUser) {
+    items.push({ label: "Survey", to: "/survey-overview", icon: ClipboardDocumentListIcon});
+  }
+
+  return items;
+});
 
 // actions
 function handleChangePassword() {
@@ -130,7 +144,7 @@ async function handleLogout() {
 
             <!-- one loop only -->
             <div class="py-1">
-              <template v-if="isElecomMember" v-for="item in menu" :key="item.label + (item.to || item.href)">
+              <template v-for="item in menu" :key="item.label + (item.to || item.href)">
                 <RouterLink
                   v-if="item.to"
                   :to="item.to"
@@ -138,7 +152,10 @@ async function handleLogout() {
                   class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                   role="menuitem"
                 >
-                  <span class="h-1.5 w-1.5 rounded-full bg-[#3FA3E8]"></span>
+                 <component
+                    :is="item.icon"
+                    class="h-4 w-4 text-[#3FA3E8]"
+                  />
                   {{ item.label }}
                 </RouterLink>
 
@@ -149,7 +166,10 @@ async function handleLogout() {
                   class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                   role="menuitem"
                 >
-                  <span class="h-1.5 w-1.5 rounded-full bg-[#3FA3E8]"></span>
+                  <component
+                    :is="item.icon"
+                    class="h-4 w-4 text-[#3FA3E8]"
+                  />
                   {{ item.label }}
                 </a>
               </template>
@@ -222,7 +242,10 @@ async function handleLogout() {
                   @click="close"
                   class="flex items-center gap-2 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-slate-900"
                 >
-                  <span class="h-1.5 w-1.5 rounded-full bg-[#3FA3E8]"></span>
+                  <component
+                    :is="item.icon"
+                    class="h-4 w-4 text-[#3FA3E8]"
+                  />
                   {{ item.label }}
                 </RouterLink>
               </template>

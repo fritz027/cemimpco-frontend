@@ -3,11 +3,22 @@ export interface LoginPayload {
   password: string;
 }
 
+export interface CreditLoginPayload {
+  username: string;
+  password: stirng;
+  store: string;
+}
+
 export interface LoginResponse {
   success: boolean;
   message: string;
+  isSurveyUser: boolean;
+  isElecomUser: boolean;
+  isSurvey: boolean;
+  activeSurveys?: Survey;
   member?: User;
   accessToken?: string;
+  
 }
 
 export interface RegisterPayload {
@@ -32,4 +43,20 @@ export interface AuthState {
   member: User | null;
   success: boolean;
   message: string;
+  surveyUser: boolean;
+  elecomUser: boolean;
+  isSurvey: boolean;
+  survey?: Survey | null;
+}
+
+export interface AuthCreditState {
+  store: string;
+  loggedIn: boolean;
+}
+
+export interface Survey {
+  survey_id: string;
+  survey_name: string;
+  total_question: number;
+  status: "1" | "0";
 }

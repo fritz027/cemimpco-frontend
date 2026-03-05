@@ -101,7 +101,7 @@
           <!-- Screen-only buttons -->
           <div class="mt-6 flex justify-between border-t border-slate-200 pt-5 print:hidden">
             <button
-              class="inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-md hover:bg-blue-700"
+              class="invisible inline-flex items-center gap-2 rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-md hover:bg-blue-700"
               @click="downloadPdf"
             >
               <ArrowDownTrayIcon class="h-5 w-5" />
@@ -173,9 +173,10 @@ import {
 import { ref, onMounted } from "vue";
 import { useAuthStore } from "@/stores/auth";
 import { useElectionStore } from "@/stores/election";
-import { getMemberVoteCasted } from "@/services/election.sevice";
+import { getMemberVoteCasted,printBallotPDF } from "@/services/election.sevice";
 import Logo from "@/assets/cemimpco-logo.jpg";
 import { useRouter } from "vue-router";
+import html2pdf from "html2pdf.js";
 
 
 const authStore = useAuthStore();
@@ -188,7 +189,7 @@ type Group = { title: string; items: Candidate[] };
 
 // values from API
 const electionYear = ref<number | string>("");
-const transactionId = ref<string>("");
+const transactionId = ref<number>(0);
 const ballotTimestamp = ref<string>("");
 
 // ballot groups
@@ -264,7 +265,7 @@ async function setVoteCasted() {
     const votes: VoteRow[] = res.data.votes || [];
 
     electionYear.value = ballot.elect_year;
-    transactionId.value = String(ballot.ballot_no);
+    transactionId.value = ballot.ballot_no;
     ballotTimestamp.value = formatDateTime(ballot.vote_date);
 
     groups.value = buildGroupsFromVotes(votes);
@@ -280,8 +281,30 @@ onMounted(async () => {
   await setVoteCasted();
 });
 
-function downloadPdf() {
-  console.log("download pdf");
+async function downloadPdf() {
+  try {
+    const res = await printBallotPDF(electionStore.year, transactionId.value, authStore.accessToken);
+    const blob = new Blob([res.data], { type: 'application/pdf' });
+
+    // 3. Create a temporary URL for the browser
+    const url = window.URL.createObjectURL(blob);
+
+    // 4. Create a hidden <a> element to trigger the download
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // You can set a custom filename here
+    link.setAttribute('download', `ballot-${transactionId.value}.pdf`);
+
+    // 5. Append, click, and clean up
+    document.body.appendChild(link);
+    link.click();
+    
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url); // Free up memory
+  } catch (error) {
+    console.error("Failed to download PDF:", error);
+  }
 }
 
 async function returnHome(){
@@ -308,7 +331,7 @@ function printConfirmation() {
     visibility: visible !important;
   }
 
-  #printable-ballot {
+  /* #printable-ballot {
     position: fixed !important;
     inset: 0 !important;
     width: 100% !important;
@@ -316,11 +339,38 @@ function printConfirmation() {
     border-radius: 0 !important;
     box-shadow: none !important;
     background: #fff !important;
-  }
+  } */
 
   html, body {
     background: #fff !important;
   }
+
+  #printable-ballot img {
+    max-width: 100%;
+    display: block;
+  }
+  #printable-ballot {
+  /* Replace these with the hex equivalents of your theme */
+  --tw-bg-opacity: 1;
+  background-color: #ffffff !important; 
+  color: #0f172a !important;
+}
+
+#printable-ballot .bg-slate-50 {
+  background-color: #f8fafc !important;
+}
+
+#printable-ballot .text-slate-900 {
+  color: #0f172a !important;
+}
+
+#printable-ballot .text-slate-500 {
+  color: #64748b !important;
+}
+
+#printable-ballot .bg-blue-50 {
+  background-color: #eff6ff !important;
+}
 
   @page {
     size: A4;

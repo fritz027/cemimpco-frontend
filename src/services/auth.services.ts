@@ -1,6 +1,6 @@
 import api from "./api";
 
-import type { LoginPayload, RegisterPayload } from '@/types/auth';
+import type { CreditLoginPayload, LoginPayload, RegisterPayload } from '@/types/auth';
 
 export const electionConfig = () => {
   return api.get('/auth/election-setting');
@@ -10,8 +10,18 @@ export const allowedElecom = () => {
   return api.get('/auth/elecom');
 }
 
+//Member Login
 export const login = (payLoad: LoginPayload) => {
   return api.post('/auth/login', payLoad);
+}
+
+//Credit Login
+export const creditLogin = (payLoad: CreditLoginPayload) => {
+  return api.post('/auth/credit/login', payLoad);
+}
+//Credit Logout
+export const creditLogout = () => {
+  return api.get('/auth/credit/logout');
 }
 
 export const register = (payLoad: RegisterPayload) => {

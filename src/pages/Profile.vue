@@ -6,28 +6,48 @@ import { memberProfile, memberDeposits, memberLoans, memberTimeDeposits } from '
 import { useElectionStore } from '@/stores/election';
 import { CheckBadgeIcon, ArchiveBoxIcon } from '@heroicons/vue/24/solid'
 import { memberVoted } from '@/services/election.sevice';
+import { checkMemberSurvey } from '@/services/survey.services';
 
 const authStore = useAuthStore();
 const electionStore = useElectionStore();
 const router = useRouter();
 const isElection = ref(false);
-const hasVoted = ref(false);
+const isSurvey = ref<boolean | null>(null);
+const hasVoted = ref<boolean | null>(null);
+const voteStatusLoading = ref(false); 
+const surveyId = ref<string | null>(null) ;
+const surveyTitle = ref('');
 
-onMounted( async() => {
+onMounted(async () => {
   try {
     isElection.value = electionStore.start;
-    await getMembersProfile();
-    await getMemberTimeDeposits();
-    await getMemberDeposits();
-    await getMemberLoans(); 
+    isSurvey.value = authStore.isSurvey;
+    surveyId.value = authStore.getSurvey?.survey_id ?? "";
+    surveyTitle.value = authStore.getSurvey?.survey_name ?? "";
+    // run these in parallel (faster page load)
+    await Promise.all([
+      getMembersProfile(),
+      getMemberTimeDeposits(),
+      getMemberDeposits(),
+      getMemberLoans(),
+    ]);
+
     if (isElection.value) {
       await isMemberVoted();
+    } else {
+      hasVoted.value = null; // not needed if no election
     }
-     
+
+    setTimeout(() => {
+      showCaption.value = false
+    }, 10000)
   } catch (error) {
-    console.log(error)
+    console.log(error);
   }
-})
+});
+
+
+const showSurveyModal = ref(false)
 
 const filteredLoans = computed(() =>
   loans.value.filter(
@@ -84,18 +104,54 @@ const storeCredit: StoreCredit = {
 const deposits = ref<Deposits[]>([]);
 
 const loans = ref<MemberLoan[]>([]);
+const showCaption = ref(true)
 
 function money(n: number) {
   return new Intl.NumberFormat("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
+async function openSurveyModal() {
+  try {
+    const id = surveyId.value
+    if (!id) return;
+    const res = await checkMemberSurvey(authStore.accessToken, id);
+
+    if (!res.data.success) {
+      console.log(res.data.message);
+      return 
+    }
+
+    if (res.data.isDone) {
+      alert("Done submmiting survey.");
+      return 
+    }
+
+     await router.push({ name: 'SurveyPage',
+      params: {
+        memberNo: authStore.member?.memberNo,
+        id: id
+      },
+  });
+  } catch (error) {
+    console.log(error);
+  }
+}
+
+function closeSurveyModal() {
+  showSurveyModal.value = false
+}
+
 async function isMemberVoted() {
+  voteStatusLoading.value = true;
+  hasVoted.value = null; // ✅ reset to unknown before request
   try {
     const result = await memberVoted(electionStore.year, authStore.accessToken);
-    hasVoted.value = result.data.isVoted;
+    hasVoted.value = !!result.data.isVoted;
   } catch (error) {
-    hasVoted.value = false;
     console.log(error);
+    hasVoted.value = false; // or null if you prefer “hide button on error”
+  } finally {
+    voteStatusLoading.value = false;
   }
 }
 
@@ -145,7 +201,6 @@ async function getMemberDeposits () {
       return;
     }
     deposits.value = response.data.deposits;
-    console.log(deposits.value);
   } catch (error) {
     console.log(error);
   }
@@ -241,10 +296,19 @@ async function viewDeposit (code: string){
   <div class="min-h-screen">
     <div class="mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-6 space-y-6">
       <div class="flex justify-center mt-8">
-  
-  <!-- Show VOTE only if election active AND user has NOT voted -->
-       <button
-          v-if="isElection && !hasVoted"
+        <!-- ✅ While checking vote status, show placeholder (optional) -->
+        <button
+          v-if="isElection && (voteStatusLoading || hasVoted === null)"
+          disabled
+          class="w-full max-w-md h-12 rounded-xl bg-slate-200 text-slate-500 font-semibold tracking-wide shadow-md
+                flex items-center justify-center gap-2 cursor-not-allowed"
+        >
+          Checking vote status...
+        </button>
+
+        <!-- Show VOTE only if election active AND user has NOT voted -->
+        <button
+          v-else-if="isElection && hasVoted === false"
           @click="Vote"
           class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md
                 hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
@@ -255,7 +319,7 @@ async function viewDeposit (code: string){
 
         <!-- Show BALLOT if user already voted -->
         <button
-          v-else-if="isElection && hasVoted"
+          v-else-if="isElection && hasVoted === true"
           @click="VoteConfirmation"
           class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md
                 hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
@@ -263,7 +327,6 @@ async function viewDeposit (code: string){
           <CheckBadgeIcon class="h-5 w-5" />
           BALLOT
         </button>
-
       </div>
       <!-- MEMBER PROFILE -->
       <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
@@ -538,4 +601,99 @@ async function viewDeposit (code: string){
       </section>
     </div>
   </div>
+  <!-- SURVEY MODAL -->
+  <div
+    v-if="showSurveyModal"
+    class="fixed inset-0 z-50 flex items-center justify-center"
+  >
+    <!-- Backdrop -->
+    <div
+      class="absolute inset-0 bg-black/50 backdrop-blur-sm"
+      @click="closeSurveyModal"
+    ></div>
+
+    <!-- Modal -->
+    <div class="relative w-full max-w-xl rounded-2xl bg-white shadow-xl">
+      <div class="border-b px-6 py-4 flex justify-between items-center">
+        <h2 class="text-lg font-semibold text-slate-900">
+          {{ surveyTitle }}
+        </h2>
+        <button
+          @click="closeSurveyModal"
+          class="text-slate-500 hover:text-slate-800 text-xl"
+        >
+          ✕
+        </button>
+      </div>
+
+      <div class="px-6 py-5 space-y-4">
+        <p class="text-sm text-slate-600">
+          Start Survey
+        </p>
+
+        <button
+          class="w-full h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold
+                hover:bg-[#2f8fd2] transition"
+        >
+          Start Survey
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- FLOATING SURVEY BUTTON -->
+  <div
+    v-if="isSurvey"
+    class="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2"
+  >
+    <!-- Caption (auto hide on mobile after few seconds) -->
+    <div
+      v-if="showCaption"
+      class="bg-white shadow-lg rounded-xl px-4 py-2 text-sm font-semibold text-slate-700
+            animate-fade-in max-w-[200px] text-right"
+    >
+      Take the Survey 👇
+    </div>
+
+    <!-- Button -->
+    <button
+      @click="openSurveyModal"
+      class="relative h-14 w-14 rounded-full bg-[#3FA3E8] text-white shadow-xl
+            hover:bg-[#2f8fd2] active:scale-95 transition
+            flex items-center justify-center"
+    >
+      <span class="text-2xl animate-wave">👋</span>
+    </button>
+  </div>
 </template>
+<style scoped>
+@keyframes wave {
+  0% { transform: rotate(0deg); }
+  15% { transform: rotate(15deg); }
+  30% { transform: rotate(-10deg); }
+  45% { transform: rotate(15deg); }
+  60% { transform: rotate(-5deg); }
+  75% { transform: rotate(10deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-wave {
+  display: inline-block;
+  animation: wave 1.8s infinite;
+  transform-origin: 70% 70%;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeInUp 0.6s ease-out;
+}
+</style>

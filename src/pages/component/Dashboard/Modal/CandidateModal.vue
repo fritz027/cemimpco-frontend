@@ -139,7 +139,7 @@
             <label class="text-xs font-bold text-slate-500">VISION STATEMENT</label>
             <textarea
               v-model="form.vision"
-              rows="4"
+              rows="6"
               class="mt-2 w-full rounded-xl border px-4 py-3 text-sm"
               placeholder="Briefly describe your goals..."
             />
@@ -437,7 +437,7 @@ function validateForm(): boolean {
   const vision = (form.vision ?? "").trim();
   if (!vision) e.vision = "Vision statement is required.";
   else if (vision.length < 10) e.vision = "Vision statement must be at least 10 characters.";
-  else if (vision.length > 500) e.vision = "Vision statement must be 500 characters max.";
+  else if (vision.length > 1500) e.vision = "Vision statement must be 1500 characters max.";
 
   errors.value = e;
 

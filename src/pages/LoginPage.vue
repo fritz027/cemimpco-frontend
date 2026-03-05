@@ -62,6 +62,7 @@ import { login,electionConfig,allowedElecom,register,resendConfirmationEmail } f
 import { useAuthStore } from "@/stores/auth";
 import { useElectionStore } from "@/stores/election";
 import type { LoginResponse } from "@/types/auth";
+import axios from "axios";
 
 const router = useRouter();
 const authStore = useAuthStore();
@@ -86,7 +87,6 @@ onMounted(async () => {
         ? JSON.parse(electionRaw)
         : electionRaw;
 
-        console.log(election);
       electionStore.$patch({
         year: Number(election.year),
         from: election.from,
@@ -96,7 +96,6 @@ onMounted(async () => {
     }
 
     const elecom = await allowedElecom();
-    console.log(elecom.data);
     if (elecom.data.users) {
       const usersRaw = elecom.data.users.uvalue;
       const users = typeof usersRaw === "string"
@@ -126,27 +125,12 @@ const isElection = computed(() => {
 });
 
 
-const tabs = [
-  { key: "all", label: "All" },
-  { key: "board", label: "Board" },
-  { key: "audit", label: "Audit" },
-];
+const tabs = [{}];
 
 
 
 
-const candidates = [
-  {
-    id: 1,
-    name: "Juan Dela Cruz",
-    memberSince: "2015",
-    quote: "Transparency and service first.",
-    manifesto: "Full manifesto text here...",
-    avatar: "https://i.pravatar.cc/200?img=12",
-    tabKey: "board",
-  },
-  // add more...
-];
+const candidates = [{}];
 
 const toggleForm = () => {
   // clear messages when switching forms
@@ -161,31 +145,53 @@ const toggleForgotPasswordForm = () => {
   isForgotPassword.value = !isForgotPassword.value;
 }
 
+
+
 async function onSubmit(payload: { memberNo: string; password: string; remember: boolean }) {
+  // ✅ prevent double submit (very common cause of hitting 429)
+  if (isLoading.value) return;
+
   errorMessage.value = null;
   isLoading.value = true;
+  isRegisterForm.value = false;
+
   try {
-  
     const response = await login({
       memberNo: payload.memberNo,
-      password: payload.password
+      password: payload.password,
     });
 
     if (response.data.success) {
-      loginResult.value = response.data
+      loginResult.value = response.data;
+      console.log('isSurvey: ', response.data.isSurvey)
       authStore.applyLoginResult(response.data);
-      await router.push({ name: 'Profile' });
-    } else {
-      if (!response.data.verified){
-        isResendConfirmation.value = true;
-        return;
-      }
-      errorMessage.value = response.data.message || "Login Failed";
+      await router.push({ name: "Profile" });
+      return;
     }
-  } catch (error: unknown) {
-    console.log(error)
-    const message = error instanceof Error ? error.message : 'Login failed. Please try again';
-    errorMessage.value = message
+
+    // non-2xx responses won't reach here (axios throws),
+    // but your API might still send success=false with 200 OK
+    if (response.data.verified === 0) {
+      isResendConfirmation.value = true;
+      return;
+    }
+
+    errorMessage.value = response.data.message || "Login Failed";
+  } catch (err: unknown) {
+    console.log(err);
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const data = err.response?.data as any;
+
+      errorMessage.value =
+        data?.message ||
+        (status ? `Request failed with status ${status}` : "Login failed. Please try again.");
+
+    } else if (err instanceof Error) {
+      errorMessage.value = err.message;
+    } else {
+      errorMessage.value = "Login failed. Please try again.";
+    }
   } finally {
     isLoading.value = false;
   }
@@ -237,7 +243,6 @@ async function onSubmitRegister(payload: {
 }
 
 async function onResendConfirmation(no: string) {
-  console.log('Member no', no);
   isLoading.value = true;
   resendMessage.value = null;
   errorMessage.value = null;

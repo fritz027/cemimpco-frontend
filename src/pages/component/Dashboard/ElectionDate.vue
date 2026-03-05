@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed, reactive, watch, ref} from "vue";
+import { computed, reactive, watch, ref, onMounted} from "vue";
 import { useElectionStore } from "@/stores/election";
 import { useAuthStore } from "@/stores/auth";
 import { updateElectionSetting } from "@/services/election.sevice";
+import { electionConfig } from "@/services/auth.services";
 
 const authStore = useAuthStore();
 const electionStore = useElectionStore();
@@ -11,6 +12,10 @@ const isSaving = ref(false);
 const showSuccess = ref(false);
 const showError = ref(false);
 const message = ref('');
+const sDate = ref('');
+const eDate = ref('');
+
+
 
 type ElectionForm = {
   year: string;
@@ -66,6 +71,43 @@ const currentYear = new Date().getFullYear();
 const yearOptions = Array.from({ length: 6 }, (_, i) => (currentYear - 2 + i).toString());
 
 const statusText = computed(() => (form.isActive ? "ACTIVE" : "INACTIVE"));
+
+onMounted( async() => {
+  await setElectionConfig(); 
+})
+
+
+async function setElectionConfig() {
+  try {
+    const res = await electionConfig();
+    if (res.data.config) {
+      const electionRaw = res.data.config.uvalue;
+      const election = typeof electionRaw === "string" 
+        ? JSON.parse(electionRaw) 
+        : electionRaw;
+
+      // 1. Split the 'from' string (e.g., "2026-02-28T00:00")
+      if (election.from) {
+        const [sDate, sTime] = election.from.split('T');
+        form.startDate = sDate;
+        form.startTime = sTime;
+      }
+
+      // 2. Split the 'to' string (e.g., "2026-03-13T23:59")
+      if (election.to) {
+        const [eDate, eTime] = election.to.split('T');
+        form.endDate = eDate;
+        form.endTime = eTime;
+      }
+
+      // 3. Update other fields
+      form.year = election.year?.toString() || new Date().getFullYear().toString();
+      form.isActive = election.start ?? false; // mapping 'start' to 'isActive'
+    }
+  } catch (error) {
+    console.error("Failed to load election config:", error);
+  }
+}
 
 async function saveSetting() {
   try {

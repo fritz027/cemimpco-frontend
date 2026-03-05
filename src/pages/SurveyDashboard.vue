@@ -48,7 +48,10 @@
                 class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500"
                 :class="isActive(item.to) ? 'border-blue-200 bg-blue-50 text-blue-600' : ''"
               >
-                <span class="h-2 w-2 rounded-full bg-current opacity-70"></span>
+                <component
+                  :is="item.icon"
+                  class="h-4 w-4 text-[#3FA3E8]"
+                />
               </span>
 
               <span>{{ item.label }}</span>
@@ -59,11 +62,11 @@
               />
             </RouterLink>
           </nav>
-
+          
           <div class="my-6 border-t border-slate-200" />
 
-          <div class="mb-4 text-xs font-semibold tracking-widest text-slate-400">
-            ADMINISTRATIVE
+          <div class="mb-6 text-xs font-semibold tracking-widest text-slate-400">
+            ADMIN
           </div>
 
           <nav class="space-y-1">
@@ -79,10 +82,18 @@
                 class="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 bg-white text-slate-500"
                 :class="isActive(item.to) ? 'border-blue-200 bg-blue-50 text-blue-600' : ''"
               >
-                <span class="h-2 w-2 rounded-full bg-current opacity-70"></span>
+                <component
+                  :is="item.icon"
+                  class="h-4 w-4 text-[#3FA3E8]"
+                />
               </span>
 
               <span>{{ item.label }}</span>
+
+              <span
+                v-if="isActive(item.to)"
+                class="ml-auto h-6 w-1 rounded-full bg-blue-600"
+              />
             </RouterLink>
           </nav>
         </div>
@@ -101,7 +112,7 @@
             >
               ☰ Menu
             </button>
-            <div class="text-sm font-semibold text-slate-900">ELECOM</div>
+            <div class="text-sm font-semibold text-slate-900">SURVEY</div>
           </div>
         </header>
 
@@ -118,22 +129,28 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import { useRoute } from "vue-router";
+import {
+  BookmarkSlashIcon,
+  ClipboardDocumentListIcon,
+  CalendarDaysIcon,
+  ChartBarIcon,
+  UserGroupIcon
+ } from "@heroicons/vue/24/solid";
 
-type MenuItem = { label: string; to: string };
+
+type MenuItem = { label: string; to: string; icon: any };
 
 const route = useRoute();
 const sidebarOpen = ref(false);
 
 const menu: MenuItem[] = [
-  { label: "Dashboard Overview", to: "/overview" },
-  { label: "Election Date", to: "/election-date" },
-  { label: "Positions", to: "/positions" },
-  { label: "Candidates", to: "/candidates" },
-  { label: "Election Results", to: "/election-result" },
+  { label: "Survey Overview", to: "/survey-overview" , icon: BookmarkSlashIcon },
+  { label: "Survey Questions", to: "/survey-list" , icon: ClipboardDocumentListIcon },
+  { label: "Result", to: "/survey-result", icon: ChartBarIcon },
 ];
 
 const adminMenu: MenuItem[] = [
-  { label: "Access", to: "/access" },
+  { label: "Access", to: "/survey-access", icon:  UserGroupIcon},
 ];
 
 const isActive = (to: string) => route.path === to;

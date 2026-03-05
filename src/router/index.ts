@@ -15,8 +15,21 @@ import BallotPage from '@/pages/BallotPage.vue';
 import VoteConfirmation from '@/pages/component/Dashboard/VoteConfirmation.vue';
 import ConfirmPage from '@/pages/confirmPage.vue';
 import ResetPassword from '@/pages/component/LoginPage/ResetPasswordPage.vue';
+import ElectionResult from '@/pages/component/Dashboard/ElectionResult.vue';
+import DashboardSuvery from '@/pages/SurveyDashboard.vue';
+import SurveyList from '@/pages/component/Survey/SurveyList.vue';
+import SurveyDetails from '@/pages/component/Survey/SurveyDetails.vue';
+import SurveyOverview from '@/pages/component/Survey/SurveyOverview.vue';
+import SurveyPage from '@/pages/SurveyPage.vue';
+import SurveyListResult from '@/pages/component/Survey/SurveyListResult.vue';
+import SurveyQuestionResult from '@/pages/component/Survey/SurveyQuestionResult.vue';
+import CreditLogin from '@/pages/component/Credit/CreditLogin.vue';
+import CreditPage from '@/pages/component/Credit/CreditPage.vue';
+import SurveyAccess from '@/pages/component/Survey/SurveyAccess.vue';
 import { useAuthStore } from "@/stores/auth";
 import { useElectionStore } from '@/stores/election';
+import { useCreditStore } from '@/stores/credit';
+
 
 
 
@@ -24,7 +37,6 @@ const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
   routes: [
     { path: "/", redirect: "/login" },
-
     {
       path: "/login",
       name: "Login",
@@ -75,6 +87,12 @@ const router = createRouter({
       meta: { guestOnly: true }
     },
     {
+      path: '/survey/:memberNo:/:id',
+      name: 'SurveyPage',
+      component: SurveyPage,
+      meta: { requiresAuth: true },
+    },
+    {
       path: '/reset/password',
       name: 'ResetPassword',
       component: ResetPassword,
@@ -110,17 +128,79 @@ const router = createRouter({
           path: '/access',
           name: "Access",
           component: Access,
+        },
+        {
+          path: '/election-result',
+          name: "ElectionResult",
+          component: ElectionResult,
         }
       ]
-    }
+    }, 
+    {
+      path: "/dashboard-survey",
+      name: "DashboardSuvery",
+      component: DashboardSuvery,
+      meta: { requiresAuth: true, requiresSurvey: true },
+      children: [
+        {
+          path: "/survey-overview",
+          name: "SurveyOverview",
+          component: SurveyOverview,
+        },
+        {
+          path: "/survey-list",
+          name: "SurveyList",
+          component: SurveyList,
+        },
+        {
+          path: '/survey-list/:id/details',
+          name: "SurveyDetails",
+          component: SurveyDetails,
+          props: true,
+        },
+        {
+          path: '/survey-result',
+          name: 'SurveyListResult',
+          component: SurveyListResult
+        },
+        {
+          path: '/survey-result/:id',
+          name: 'SurveyQuestionResult',
+          component: SurveyQuestionResult
+        },
+        {
+          path: '/survey-access',
+          name: 'SurveyAccess',
+          component: SurveyAccess,
+        }
+
+      ]
+    },
+    {
+      path: '/creditlimit',
+      name: 'CreditLogin',
+      component: CreditLogin,
+      meta: { guestOnly: true },
+    },
+    {
+      path: '/credit',
+      name: 'CreditPage',
+      component: CreditPage,
+      meta: { requiresCreditAuth: true }
+    },
   ],
+  
 });
 
 router.beforeEach(async (to) => {
   const authStore = useAuthStore();
   const electionStore = useElectionStore();
+  const creditStore = useCreditStore();
 
   const isAuth = authStore.isAuthenticated;
+  const isElecom = authStore.isElecomUser;
+  const isSurvey = authStore.isSurveyUser;
+  const isCreditLogged = creditStore.isLoggedIn;
 
   // ✅ auth
   if (to.meta.requiresAuth && !isAuth) {
@@ -134,17 +214,20 @@ router.beforeEach(async (to) => {
 
   // ✅ elecom-only
   if (to.meta.requiresElecom) {
-    const memberNo = authStore.member?.memberNo;
-
-    // If your elecom list is loaded via API and might still be empty,
-    // you can optionally fetch it here (only if you have an action):
-    // if (!electionStore.elecom?.length) await electionStore.loadElecom();
-
-    const allowed = !!memberNo && Array.isArray(electionStore.elecom)
-      && electionStore.elecom.includes(memberNo);
-
-    if (!allowed) {
+    if (!isElecom) {
       return { name: "Profile" }; // or { name: "NotAuthorized" } / { path: "/" }
+    }
+  }
+
+  if (to.meta.requiresSurvey) {
+    if (!isSurvey) {
+      return { name: "Profile" };
+    }
+  }
+
+  if (to.meta.requiresCreditAuth) {
+    if (!isCreditLogged) {
+      return { name: "CreditLogin" };
     }
   }
 
