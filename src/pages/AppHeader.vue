@@ -8,8 +8,6 @@ import {
   CheckBadgeIcon
  } from "@heroicons/vue/24/solid";
 
-
-
 type MenuItem = { label: string; to?: string; href?: string, isVisible?: boolean, icon?: any };
 
 const authStore = useAuthStore();
@@ -18,11 +16,13 @@ const electionStore = useElectionStore();
 const open = ref(false);
 const showChangePasswordModal = ref(false);
 
-
 const urlLogo = bg;
 
-
 const memberName = computed(() => authStore.member?.name || "");
+
+// Refs for detecting outside clicks
+const desktopMenuRef = ref<HTMLElement | null>(null);
+const mobileMenuRef = ref<HTMLElement | null>(null);
 
 function toggle() {
   open.value = !open.value;
@@ -35,8 +35,29 @@ function onKeydown(e: KeyboardEvent) {
   if (e.key === "Escape") close();
 }
 
-onMounted(() => window.addEventListener("keydown", onKeydown));
-onBeforeUnmount(() => window.removeEventListener("keydown", onKeydown));
+// Click outside logic
+function handleClickOutside(e: MouseEvent) {
+  if (!open.value) return;
+  
+  const target = e.target as Node;
+  const isOutsideDesktop = desktopMenuRef.value && !desktopMenuRef.value.contains(target);
+  const isOutsideMobile = mobileMenuRef.value && !mobileMenuRef.value.contains(target);
+
+  // If the click is outside BOTH the desktop and mobile menu containers, close the menu
+  if (isOutsideDesktop && isOutsideMobile) {
+    close();
+  }
+}
+
+onMounted(() => {
+  window.addEventListener("keydown", onKeydown);
+  document.addEventListener("mousedown", handleClickOutside); // Attach listener
+});
+
+onBeforeUnmount(() => {
+  window.removeEventListener("keydown", onKeydown);
+  document.removeEventListener("mousedown", handleClickOutside); // Clean up listener
+});
 
 // close menu when logged out
 watch(
@@ -88,7 +109,7 @@ function handleChangePassword() {
 async function handleLogout() {
   close();
   electionStore.logout();
-  authStore.logout(); // <-- adjust if your store uses different name
+  authStore.logout(); 
 }
 </script>
 
@@ -96,7 +117,6 @@ async function handleLogout() {
   <header class="sticky top-0 z-50 w-full border-b border-blue-700 bg-[#0A35C6]/90 backdrop-blur text-white shadow-sm">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex h-28 items-center justify-between">
-        <!-- Left: Logo + Name -->
         <RouterLink to="/" class="flex items-center gap-3 min-w-0">
           <img
             :src="urlLogo"
@@ -112,37 +132,29 @@ async function handleLogout() {
           </div>
         </RouterLink>
 
-        <!-- Right: Dropdown (desktop) -->
-        <div class="relative hidden sm:block" v-if="authStore.isAuthenticated">
-          <button
-            type="button"
-            @click="toggle"
-            class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
-            aria-haspopup="menu"
-            :aria-expanded="open"
-          >
-            {{ memberName || "Account"  }}
-            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-              <path
-                fill-rule="evenodd"
-                d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z"
-                clip-rule="evenodd"
-              />
-            </svg>
-          </button>
+        <div class="relative hidden sm:block z-[100]" v-if="authStore.isAuthenticated" ref="desktopMenuRef">
+            <button
+              type="button"
+              @click="open = !open"
+              class="inline-flex items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-haspopup="menu"
+              :aria-expanded="open"
+            >
+              {{ memberName || "Account"  }}
+              <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 10.94l3.71-3.71a.75.75 0 111.06 1.06l-4.24 4.24a.75.75 0 01-1.06 0L5.21 8.29a.75.75 0 01.02-1.08z" clip-rule="evenodd" />
+              </svg>
+            </button>
 
-          <!-- Dropdown panel -->
-          <div
-            v-if="open"
-            class="absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg z-50"
-            role="menu"
-          >
-            <!-- Header -->
+            <div
+              v-if="open"
+              class="absolute right-0 mt-2 w-60 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg z-[110]"
+              role="menu"
+            >
             <div class="px-4 pt-3 pb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Quick actions
             </div>
 
-            <!-- one loop only -->
             <div class="py-1">
               <template v-for="item in menu" :key="item.label + (item.to || item.href)">
                 <RouterLink
@@ -175,7 +187,6 @@ async function handleLogout() {
               </template>
             </div>
 
-            <!-- Change password button -->
             <div class="border-t border-slate-200 py-1">
               <button
                 type="button"
@@ -191,7 +202,6 @@ async function handleLogout() {
               </button>
             </div>
 
-            <!-- Logout button -->
             <div class="border-t border-slate-200 p-2">
               <button
                 type="button"
@@ -209,8 +219,7 @@ async function handleLogout() {
           </div>
         </div>
 
-        <!-- Right: Burger (mobile) -->
-        <div class="relative sm:hidden" v-if="authStore.isAuthenticated">
+        <div class="relative sm:hidden z-[100]" v-if="authStore.isAuthenticated" ref="mobileMenuRef">
           <button
             type="button"
             @click="toggle"
@@ -228,7 +237,7 @@ async function handleLogout() {
 
           <div
             v-if="open"
-            class="absolute right-0 mt-2 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-lg z-50"
+            class="absolute right-0 top-full mt-2 w-72 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl z-[110]"
           >
             <div class="px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Menu
@@ -274,12 +283,8 @@ async function handleLogout() {
         </div>
       </div>
     </div>
-
-    <!-- Click-away overlay (closes menu) -->
-    <div v-if="open" class="fixed inset-0 z-40" @click="close"></div>
   </header>
 
-  <!-- Change Password Modal -->
   <div
     v-if="showChangePasswordModal"
     class="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 px-4"
@@ -341,9 +346,5 @@ async function handleLogout() {
   </div>
 </template>
 
-
 <style scoped>
-/* Vue doesn't have a built-in @click.outside directive unless you installed one.
-   The overlay above already handles click-away; so ignore @click.outside if you want.
-*/
 </style>

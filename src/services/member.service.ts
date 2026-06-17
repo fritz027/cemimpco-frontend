@@ -32,3 +32,12 @@ export const searchMember = (keyword: string, token: string) => {
     },
   });
 };
+
+export const patronageDividend = (token: string) => {
+  return api.get('/member/patronage-dividend', {
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+    responseType: 'blob',
+  });
+}

@@ -1,100 +1,90 @@
 <template>
-  <div class="min-h-screen bg-slate-50">
-    <div class="mx-auto max-w-lg px-4 py-10">
-
-      <!-- Loading -->
-      <div v-if="loading" class="text-center text-slate-500">
-        Loading survey...
+  <div class="min-h-screen bg-slate-50 pb-12"> <div class="mx-auto max-w-2xl px-4 py-6 sm:py-10"> <div v-if="loading" class="flex flex-col items-center justify-center py-20 text-slate-500">
+        <div class="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-4"></div>
+        Loading survey questions...
       </div>
 
-      <!-- Survey Card -->
-      <div v-else-if="current" class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+      <div v-else-if="current" class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col">
 
-        <!-- Header -->
-        <div class="px-6 pt-6 pb-4">
+        <div class="px-6 py-4 bg-white border-b sticky top-0 z-10">
           <div class="flex items-center justify-between">
-            <div>
-              <p class="text-[11px] font-extrabold tracking-wide text-blue-600">
-                {{ surveyTitle.toUpperCase() }}
+            <div class="flex-1 pr-4">
+              <p class="text-[10px] font-extrabold tracking-widest text-blue-600 uppercase">
+                {{ surveyTitle }}
               </p>
-              <p class="mt-1 text-xs text-slate-500">
+              <p class="mt-0.5 text-xs text-slate-500 font-medium">
                 Question {{ currentIndex + 1 }} of {{ questions.length }}
               </p>
             </div>
-
-            <div class="text-xs font-bold text-slate-600">
+            <div class="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md">
               {{ progressPct }}%
             </div>
           </div>
-
-          <div class="mt-3 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
-            <div class="h-full bg-blue-600 transition-all"
+          <div class="mt-3 h-1.5 w-full rounded-full bg-slate-100 overflow-hidden">
+            <div class="h-full bg-blue-600 transition-all duration-500"
                  :style="{ width: progressPct + '%' }"></div>
           </div>
         </div>
 
-        <div class="border-t"></div>
-
-        <!-- Question -->
-        <div class="px-6 py-6">
-          <h2 class="text-center text-lg font-extrabold text-slate-900 leading-snug">
+        <div class="px-6 py-8">
+          <h2 
+            class="text-left text-slate-900 leading-relaxed break-words transition-all duration-300"
+            :class="[
+              current.question.length > 500 ? 'text-base font-medium' : 
+              current.question.length > 200 ? 'text-lg font-semibold' : 
+              'text-xl font-extrabold'
+            ]"
+          >
             {{ current.question }}
           </h2>
 
-          <!-- Context -->
-          <div class="mt-6 rounded-xl border border-slate-200 bg-slate-50 p-4">
-            <div class="text-[11px] font-extrabold tracking-wide text-blue-600">
-              QUESTION CONTEXT
+          <div v-if="current.context" class="mt-6 rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
+            <div class="px-4 py-2 border-b border-slate-200 bg-slate-100/50 text-[10px] font-extrabold tracking-wider text-slate-500 uppercase">
+              Reference Context
             </div>
-            <p class="mt-2 text-xs leading-relaxed text-slate-600">
-              {{ current.context }}
-            </p>
+            <div 
+              class="max-h-60 overflow-y-auto p-4 text-sm leading-relaxed text-slate-600 scrollbar-thin"
+              v-html="current.context"
+            >
+              </div>
           </div>
 
-          <!-- Yes / No -->
-          <div class="mt-6 grid grid-cols-2 gap-4">
+          <div class="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-4">
             <button
               @click="answer = 'yes'"
-              class="rounded-xl border p-5 text-center transition"
+              class="group relative flex items-center gap-4 rounded-xl border-2 p-4 transition-all duration-200"
               :class="answer === 'yes'
-                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100'
-                : 'border-slate-200 bg-white'"
+                ? 'border-blue-600 bg-blue-50 ring-4 ring-blue-50'
+                : 'border-slate-100 bg-white hover:border-slate-200'"
             >
-              <div class="mx-auto h-10 w-10 flex items-center justify-center rounded-full"
-                   :class="answer === 'yes'
-                     ? 'bg-blue-600 text-white'
-                     : 'bg-slate-200 text-slate-600'">
+              <div class="h-10 w-10 flex shrink-0 items-center justify-center rounded-full transition-colors"
+                   :class="answer === 'yes' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'">
                 ✓
               </div>
-              <div class="mt-3 text-sm font-bold">Yes</div>
+              <div class="text-base font-bold text-slate-800">Yes, I agree</div>
             </button>
 
             <button
               @click="answer = 'no'"
-              class="rounded-xl border p-5 text-center transition"
+              class="group relative flex items-center gap-4 rounded-xl border-2 p-4 transition-all duration-200"
               :class="answer === 'no'
-                ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-100'
-                : 'border-slate-200 bg-white'"
+                ? 'border-blue-600 bg-blue-50 ring-4 ring-blue-50'
+                : 'border-slate-100 bg-white hover:border-slate-200'"
             >
-              <div class="mx-auto h-10 w-10 flex items-center justify-center rounded-full"
-                   :class="answer === 'no'
-                     ? 'bg-blue-600 text-white'
-                     : 'bg-slate-200 text-slate-600'">
+              <div class="h-10 w-10 flex shrink-0 items-center justify-center rounded-full transition-colors"
+                   :class="answer === 'no' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-400 group-hover:bg-slate-200'">
                 ✕
               </div>
-              <div class="mt-3 text-sm font-bold">No</div>
+              <div class="text-base font-bold text-slate-800">No, I disagree</div>
             </button>
           </div>
         </div>
 
-        <div class="border-t"></div>
-
-        <!-- Footer -->
-        <div class="flex items-center justify-between px-6 py-4">
+        <div class="flex items-center justify-between border-t bg-slate-50/50 px-6 py-4">
           <button
             @click="prev"
             :disabled="currentIndex === 0"
-            class="text-sm font-semibold text-slate-500 disabled:opacity-40"
+            class="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 disabled:opacity-30 transition-colors"
           >
             ← Previous
           </button>
@@ -102,21 +92,20 @@
           <button
             @click="next"
             :disabled="!answer"
-            class="rounded-xl bg-blue-600 px-5 py-2.5 text-sm font-bold text-white
-                   disabled:opacity-50"
+            class="rounded-xl bg-blue-600 px-8 py-3 text-sm font-bold text-white shadow-lg shadow-blue-200 
+                   hover:bg-blue-700 active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none"
           >
-            {{ currentIndex === questions.length - 1 ? "Submit" : "Next →" }}
+            {{ currentIndex === questions.length - 1 ? "Complete Survey" : "Next Question →" }}
           </button>
         </div>
       </div>
 
-      <!-- No Questions -->
-      <div v-else class="text-center text-slate-500">
-        No questions available.
+      <div v-else class="rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center text-slate-500">
+        <p class="font-bold text-slate-400">No questions available for this survey.</p>
       </div>
 
-      <p class="mt-4 text-center text-xs text-slate-400">
-        🔒 Your responses are encrypted and anonymous
+      <p class="mt-6 text-center text-[10px] text-slate-400 font-medium">
+        🔒 Responses are secure and anonymous
       </p>
 
     </div>
@@ -150,6 +139,8 @@ type UiQuestion = {
 const route = useRoute();
 const router = useRouter();
 const authStore = useAuthStore();
+
+const isPreview = computed(() => route.name === 'SurveyPagePreview' || !route.params.memberNo);
 
 const surveyId = computed(() => {
   const raw = route.params.id;
@@ -232,6 +223,11 @@ async function next() {
   const isLast = currentIndex.value === questions.value.length - 1;
 
   if (isLast) { 
+    if (isPreview.value){
+      alert("This is a preview. No data will be submitted.");
+      router.push({ name: "SurveyList" }); // Or back to list
+      return;
+    }
     // build submit payload
     const payload = {
       answers: Object.entries(answers.value).map(([survey_qid, ans]) => ({

@@ -183,20 +183,32 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700">Survey Question</label>
-            <input
-              v-model.trim="form.survey_question"
-              type="text"
+            <div class="flex justify-between items-center">
+              <label class="block text-sm font-medium text-slate-700">Survey Question</label>
+              <span :class="['text-[10px]', form.survey_question.length >= 1000 ? 'text-red-600 font-bold' : 'text-slate-400']">
+                {{ form.survey_question.length }} / 1,000
+              </span>
+            </div>
+            <textarea
+              v-model="form.survey_question"
+              rows="1"
+              maxlength="1000"
               placeholder="e.g., How satisfied are you with our services?"
               class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-slate-700">Survey Context</label>
+            <div class="flex justify-between items-center">
+              <label class="block text-sm font-medium text-slate-700">Survey Context</label>
+              <span :class="['text-[10px]', form.survey_context.length >= 3000 ? 'text-red-600 font-bold' : 'text-slate-400']">
+                {{ form.survey_context.length }} / 3,000
+              </span>
+            </div>
             <textarea
-              v-model.trim="form.survey_context"
+              v-model="form.survey_context"
               rows="3"
+              maxlength="3000"
               placeholder="Optional: describe what this question is for..."
               class="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
             />

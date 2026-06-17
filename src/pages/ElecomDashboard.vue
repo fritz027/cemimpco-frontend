@@ -90,12 +90,12 @@
 
       <!-- ================= Main Content ================= -->
       <!-- ✅ Add min-h-0 to allow scrolling -->
-      <div class="flex min-w-0 flex-1 flex-col min-h-0">
-        <!-- Mobile Top Bar -->
-        <header class="sticky top-0 z-30 border-b border-slate-200 bg-white/80 backdrop-blur lg:hidden">
+      <div class="flex min-w-0 flex-1 flex-col h-full">
+  
+        <header class="border-b border-slate-200 bg-white lg:hidden shrink-0">
           <div class="flex items-center justify-between px-4 py-3">
             <button
-              class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+              class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700"
               type="button"
               @click="sidebarOpen = true"
             >
@@ -105,8 +105,7 @@
           </div>
         </header>
 
-        <!-- ✅ Children (router pages) scroll here -->
-        <main class="flex-1 min-h-0 min-w-0 overflow-y-auto p-3 lg:p-6">
+        <main class="flex-1 overflow-y-auto p-3 lg:p-6 bg-slate-50/60">
           <router-view />
         </main>
       </div>

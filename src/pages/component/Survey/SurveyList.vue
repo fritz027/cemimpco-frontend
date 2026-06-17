@@ -89,6 +89,12 @@
                   <div class="flex justify-end gap-2">
                     <button
                       class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
+                      @click="openSurveyModal(s.id)"
+                    >
+                      Preview
+                    </button>
+                    <button
+                      class="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
                       @click="openEditModal(s.id)"
                     >
                       Edit
@@ -428,6 +434,19 @@ async function handleSaveConfig(payload: {
 
   } catch (e) {
     console.log(e);
+  }
+}
+
+async function openSurveyModal(id: string) {
+  try {
+    if (!id) return;
+     await router.push({ name: 'SurveyPagePreview',
+      params: {
+        id: id
+      },
+  });
+  } catch (error) {
+    console.log(error);
   }
 }
 </script>

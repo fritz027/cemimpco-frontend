@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref, reactive, computed } from 'vue';
-import { useRouter, isNavigationFailure, viewDepthKey } from "vue-router";
+import { useRouter, isNavigationFailure } from "vue-router";
 import { useAuthStore } from '@/stores/auth';
 import { memberProfile, memberDeposits, memberLoans, memberTimeDeposits } from '@/services/member.service';
 import { useElectionStore } from '@/stores/election';
-import { CheckBadgeIcon, ArchiveBoxIcon } from '@heroicons/vue/24/solid'
+import { CheckBadgeIcon, ArchiveBoxIcon, UsersIcon } from '@heroicons/vue/24/solid'
 import { memberVoted } from '@/services/election.sevice';
 import { checkMemberSurvey } from '@/services/survey.services';
 
@@ -14,9 +14,12 @@ const router = useRouter();
 const isElection = ref(false);
 const isSurvey = ref<boolean | null>(null);
 const hasVoted = ref<boolean | null>(null);
-const voteStatusLoading = ref(false); 
+const voteStatusLoading = ref(false);
 const surveyId = ref<string | null>(null) ;
 const surveyTitle = ref('');
+const memberType = ref<string>("");
+
+
 
 onMounted(async () => {
   try {
@@ -24,6 +27,8 @@ onMounted(async () => {
     isSurvey.value = authStore.isSurvey;
     surveyId.value = authStore.getSurvey?.survey_id ?? "";
     surveyTitle.value = authStore.getSurvey?.survey_name ?? "";
+    memberType.value = authStore.getMember?.type ?? "";
+
     // run these in parallel (faster page load)
     await Promise.all([
       getMembersProfile(),
@@ -46,15 +51,39 @@ onMounted(async () => {
   }
 });
 
+const isWithinDateRange = computed(() => {
+  const now = new Date();
+  const start = new Date(electionStore.from); // Replace with your actual date source
+  const end = new Date(electionStore.to);     // Replace with your actual date source
+
+  return now >= start && now <= end;
+});
 
 const showSurveyModal = ref(false)
 
-const filteredLoans = computed(() =>
-  loans.value.filter(
-    (loan) =>
-      loan.balance > 0 && loan.loanAmount !== loan.balance
-  )
-);
+const type = computed(() => {
+  const types: Record<string, string> = {
+    'R': 'REGULAR',
+    'A': 'ASSOCIATE',
+    'K': 'KIDDIES',
+    'C': 'CUSTOMER',
+    'O': 'ORGANIZATION',
+    'S': 'SUPPLIER',
+    'P': 'PATRON',
+    'Y': 'YOUTH'
+  };
+
+  // Uses the mapping if it exists, otherwise defaults to 'NONE'
+  return types[memberType.value] || 'NONE';
+});
+
+
+// const filteredLoans = computed(() =>
+//   loans.value.filter(
+//     (loan) =>
+//       loan.balance > 0 && loan.loanAmount !== loan.balance
+//   )
+// );
 type MemberProfile = {
   memberNo: string;
   memberName: string;
@@ -64,11 +93,11 @@ type MemberProfile = {
   credit_availed: number;
 };
 
-type StoreCredit = {
-  creditLimit: number;
-  creditAvailed: number;
-  creditBalance: number;
-};
+// type StoreCredit = {
+//   creditLimit: number;
+//   creditAvailed: number;
+//   creditBalance: number;
+// };
 
 type MemberLoan = {
   loanID: string;
@@ -86,6 +115,18 @@ type Deposits = {
   balance: number;
 };
 
+type TimeDeposit = {
+  referenceNo: string;
+  memberNo: string;
+  depositDate: string;
+  term: number;
+  dueDate: string;
+  depositAmount: number;
+  interestRate: number;
+  certificateNo: string;
+  termStatus: string;
+};
+
 const profile = reactive<MemberProfile>({
   memberNo: "",
   memberName: "",
@@ -95,16 +136,18 @@ const profile = reactive<MemberProfile>({
   credit_limit: 0,
 });
 
-const storeCredit: StoreCredit = {
-  creditLimit: 10000,
-  creditAvailed: -115732.37,
-  creditBalance: 125732.37,
-};
+// const storeCredit: StoreCredit = {
+//   creditLimit: 10000,
+//   creditAvailed: -115732.37,
+//   creditBalance: 125732.37,
+// };
 
 const deposits = ref<Deposits[]>([]);
-
+const timeDeposits = ref<TimeDeposit[]>([]);
 const loans = ref<MemberLoan[]>([]);
-const showCaption = ref(true)
+const showCaption = ref(true);
+const showTimeDeposits = ref(true);
+
 
 function money(n: number) {
   return new Intl.NumberFormat("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
@@ -118,12 +161,12 @@ async function openSurveyModal() {
 
     if (!res.data.success) {
       console.log(res.data.message);
-      return 
+      return
     }
 
     if (res.data.isDone) {
       alert("Done submmiting survey.");
-      return 
+      return
     }
 
      await router.push({ name: 'SurveyPage',
@@ -136,6 +179,11 @@ async function openSurveyModal() {
     console.log(error);
   }
 }
+
+async function viewCandidates() {
+  await router.push({ name: "ViewCandidates", params: { year: electionStore.year }});
+}
+
 
 function closeSurveyModal() {
   showSurveyModal.value = false
@@ -158,7 +206,7 @@ async function isMemberVoted() {
 // actions
 async function getMembersProfile() {
   try {
-    
+
     const response = await memberProfile(authStore.accessToken);
     if (!response.data.success) {
       console.log(response.data.message);
@@ -181,13 +229,17 @@ async function getMembersProfile() {
 async function getMemberTimeDeposits () {
   try {
     const response = await memberTimeDeposits(authStore.accessToken);
-    if (!response.data.status) {
+    if (!response.data.success) {
       console.log(response.data.message);
+      showTimeDeposits.value = false;
       return;
     }
 
-    // deposits.value = response.data.deposits;
-  
+    timeDeposits.value = response.data.timeDeposits;
+    if (!timeDeposits.value.length) {
+      showTimeDeposits.value = false;
+    }
+
   } catch (error) {
     console.log(error)
   }
@@ -234,8 +286,27 @@ function formatDate(s: string) {
     minute: "2-digit",
   });
 }
-function viewDividend() {}
-function loanApplication() {}
+
+const formatDateOnly = (dateString: string | null) => {
+  if (!dateString) return '—';
+  const date = new Date(dateString);
+  return new Intl.DateTimeFormat('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(date);
+};
+
+async function viewDividend() {
+  await router.push({
+      name: "PatronageDividend"
+  });
+}
+async function loanApplication() {
+  await router.push({
+      name: "LoanApplication"
+  })
+}
 async function creditHistory () {
 
   try {
@@ -295,45 +366,52 @@ async function viewDeposit (code: string){
   <!-- Page background (optional) -->
   <div class="min-h-screen">
     <div class="mx-auto w-full max-w-7xl px-3 sm:px-6 lg:px-8 py-6 space-y-6">
-      <div class="flex justify-center mt-8">
-        <!-- ✅ While checking vote status, show placeholder (optional) -->
+      <div v-if="memberType === 'R'" class="flex justify-center mt-8">
         <button
           v-if="isElection && (voteStatusLoading || hasVoted === null)"
           disabled
-          class="w-full max-w-md h-12 rounded-xl bg-slate-200 text-slate-500 font-semibold tracking-wide shadow-md
-                flex items-center justify-center gap-2 cursor-not-allowed"
+          class="w-full max-w-md h-12 rounded-xl bg-slate-200 text-slate-500 font-semibold tracking-wide shadow-md flex items-center justify-center gap-2 cursor-not-allowed"
         >
           Checking vote status...
         </button>
 
-        <!-- Show VOTE only if election active AND user has NOT voted -->
         <button
-          v-else-if="isElection && hasVoted === false"
+          v-else-if="isElection && isWithinDateRange && hasVoted === false"
           @click="Vote"
-          class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md
-                hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
+          class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
         >
           <ArchiveBoxIcon class="h-5 w-5" />
           VOTE
         </button>
 
-        <!-- Show BALLOT if user already voted -->
         <button
-          v-else-if="isElection && hasVoted === true"
+          v-else-if="isElection && isWithinDateRange && hasVoted === true"
           @click="VoteConfirmation"
-          class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md
-                hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
+          class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
         >
           <CheckBadgeIcon class="h-5 w-5" />
           BALLOT
         </button>
+
+        <button
+          v-else-if="isElection && !isWithinDateRange"
+          @click="viewCandidates"
+          class="w-full max-w-md h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-md hover:bg-[#2f8fd2] active:scale-[0.99] transition flex items-center justify-center gap-2"
+        >
+          <UsersIcon class="h-5 w-5" />
+          VIEW CANDIDATES
+        </button>
       </div>
       <!-- MEMBER PROFILE -->
       <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-        <div class="bg-[#3FA3E8] px-4 sm:px-6 py-4">
-          <h2 class="text-base sm:text-lg font-bold tracking-wide text-white">
-            CEBU MITSUMI COOPERATIVE MEMBER PROFILE
+        <div class="bg-[#3FA3E8] px-4 sm:px-6 py-4 flex justify-between items-center rounded-t-lg">
+          <h2 class="text-base sm:text-lg font-bold tracking-wide text-white uppercase">
+            MEMBER PROFILE:
           </h2>
+
+          <span class="text-base sm:text-lg font-bold tracking-wide text-white uppercase">
+            MEMBER TYPE: {{ type }}
+          </span>
         </div>
 
         <div class="p-4 sm:p-6 space-y-6">
@@ -435,7 +513,7 @@ async function viewDeposit (code: string){
                 class="w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-slate-900"
               />
             </div>
-            
+
             <button
               @click="creditHistory"
              class="h-12 w-full rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-sm
@@ -458,14 +536,55 @@ async function viewDeposit (code: string){
         </div>
       </section>
 
+      <!-- TIME DEPOSITS -->
+      <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm" v-if="showTimeDeposits">
+        <div class="bg-[#3FA3E8] px-4 sm:px-6 py-4">
+          <h2 class="text-base sm:text-lg font-bold tracking-wide text-white uppercase">Time Deposits</h2>
+        </div>
+
+        <div class="p-4 sm:p-6 space-y-4">
+          <article
+            v-for="timeDepo in timeDeposits"
+            :key="timeDepo.referenceNo"
+            class="rounded-2xl border border-slate-200 bg-white p-4 sm:p-5 shadow-sm hover:shadow-md transition"
+          >
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+
+              <div class="space-y-1">
+                <label class="block text-xs font-bold uppercase text-slate-500">Certificate & Ref</label>
+                <p class="text-sm font-semibold text-slate-900">{{ timeDepo.certificateNo }}</p>
+                <p class="text-[12px] text-slate-400 font-mono tracking-tight">REF: {{ timeDepo.referenceNo }}</p>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Deposit Amount</label>
+                <div class="rounded-xl border border-slate-200 bg-slate-50 px-4 py-2">
+                  <span class="text-lg font-bold text-slate-900">{{ money(timeDepo.depositAmount) }}</span>
+                </div>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Rates & Duration</label>
+                <p class="text-sm font-semibold text-slate-900">{{ timeDepo.interestRate }}% Annual Interest</p>
+                <p class="text-[12px] text-slate-500">{{ timeDepo.term }} Days • {{ timeDepo.termStatus }}</p>
+              </div>
+
+              <div class="lg:text-right">
+                <label class="block text-xs font-bold uppercase text-slate-500 mb-1">Maturity Date</label>
+                <p class="text-sm font-bold text-[#3FA3E8]">{{ formatDateOnly(timeDepo.dueDate) }}</p>
+                <p class="text-[12px] text-slate-400 italic">Opened: {{ formatDateOnly(timeDepo.depositDate) }}</p>
+              </div>
+
+            </div>
+          </article>
+        </div>
+      </section>
+
       <!-- DEPOSITS -->
       <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <div class="bg-[#3FA3E8] px-4 sm:px-6 py-4 flex items-center justify-between">
           <h2 class="text-base sm:text-lg font-bold tracking-wide text-white">DEPOSITS</h2>
         </div>
-
-        
-            
         <div class="p-4 sm:p-6 space-y-4">
           <article
             v-for="deposit in deposits"
@@ -504,6 +623,8 @@ async function viewDeposit (code: string){
         </article>
         </div>
       </section>
+
+      <!-- LOANS -->
       <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
         <!-- Header -->
         <div class="flex items-center justify-between bg-[#3FA3E8] px-4 sm:px-6 py-4">

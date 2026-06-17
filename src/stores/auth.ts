@@ -28,20 +28,21 @@ export const useAuthStore = defineStore("auth", {
 
   actions: {
     applyLoginResult(result: LoginResponse) {
-      this.success = Boolean((result as any)?.success)
-      this.message = (result as any)?.message ?? ''
+      this.success = Boolean(result.success)
+      this.message = result.message ?? ''
 
-      this.surveyUser = Boolean((result as any)?.isSurveyUser)
-      this.elecomUser = Boolean((result as any)?.isElecomUser)
-      this.isSurvey = Boolean((result as any)?.isSurvey)
+      this.surveyUser = Boolean(result.isSurveyUser)
+      this.elecomUser = Boolean(result.isElecomUser)
+      this.isSurvey = Boolean(result.isSurvey)
 
-      if (this.success && (result as any)?.accessToken) {
-        this.accessToken = (result as any).accessToken
+
+      if (this.success && result.accessToken) {
+        this.accessToken = result.accessToken
         localStorage.setItem("accessToken", this.accessToken)
       }
 
-      this.member = (result as any)?.member ?? null
-      this.survey = (result as any)?.activeSurveys[0] ?? null
+      this.member = result.member ?? null
+      this.survey = result.activeSurveys ?? null
     },
 
     setAccessToken(token: string) {
@@ -66,6 +67,7 @@ export const useAuthStore = defineStore("auth", {
       this.surveyUser = false;
       this.elecomUser = false;
       this.isSurvey = false;
+      this.survey = null;
       localStorage.removeItem("accessToken");
       router.push('/login');
     },

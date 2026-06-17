@@ -1,7 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../pages/LoginOld.vue';
 import Login from '../pages/LoginPage.vue';
-import Profile from '../pages/Profile.vue';
+import Profile from '../pages/ProfilePage.vue';
 import LoanProfile from '../pages/LoanProfile.vue';
 import DepositProfile from '../pages/DepositProfile.vue';
 import CreditProfile from '../pages/CreditProfile.vue';
@@ -26,6 +26,10 @@ import SurveyQuestionResult from '@/pages/component/Survey/SurveyQuestionResult.
 import CreditLogin from '@/pages/component/Credit/CreditLogin.vue';
 import CreditPage from '@/pages/component/Credit/CreditPage.vue';
 import SurveyAccess from '@/pages/component/Survey/SurveyAccess.vue';
+import ViewCandidates from '@/pages/ViewCandidates.vue';
+import PatronageDividend from '@/pages/PatronageDividend.vue';
+import LoanApplications from '@/pages/component/Loan/LoanApplications.vue';
+import LoanApplication from '@/pages/component/Loan/LoanApplication.vue';
 import { useAuthStore } from "@/stores/auth";
 import { useElectionStore } from '@/stores/election';
 import { useCreditStore } from '@/stores/credit';
@@ -69,16 +73,22 @@ const router = createRouter({
       meta: { requiresAuth: true },
     },
     {
+      path: '/patronage-dividend',
+      name: 'PatronageDividend',
+      component: PatronageDividend,
+      meta: { requiresAuth: true, isMemberRegular: true },
+    },
+    {
       path: '/ballot',
       name: "BallotPage",
       component: BallotPage,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, isElection: true, electionDate: true, isMemberRegular: true },
     },
     {
       path: '/vote-confirmation',
       name: "VoteConfirmation",
       component: VoteConfirmation,
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: true, isMemberRegular: true  },
     },
     {
       path: '/confirm',
@@ -87,7 +97,7 @@ const router = createRouter({
       meta: { guestOnly: true }
     },
     {
-      path: '/survey/:memberNo:/:id',
+      path: '/survey/:memberNo/:id',
       name: 'SurveyPage',
       component: SurveyPage,
       meta: { requiresAuth: true },
@@ -97,6 +107,25 @@ const router = createRouter({
       name: 'ResetPassword',
       component: ResetPassword,
       meta: { guestOnly: true }
+    },
+    {
+      path: '/view-candidates/:year',
+      name: 'ViewCandidates',
+      component: ViewCandidates,
+      meta: { requiresAuth: true, isElection: true, isMemberRegular: true  },
+    },
+    {
+      path: '/loan-application',
+      name: 'LoanApplication',
+      component: LoanApplications,
+      meta: { requiresAuth: true, isMemberRegular: true  },
+    },
+    {
+      path: '/loan-application/:memberNo',
+      name: 'LoanApplicationForm',
+      component: LoanApplication,
+      meta: { requiresAuth: true, isMemberRegular: true  },
+      props: true,
     },
     {
       path: "/dashboard-elecom",
@@ -135,7 +164,7 @@ const router = createRouter({
           component: ElectionResult,
         }
       ]
-    }, 
+    },
     {
       path: "/dashboard-survey",
       name: "DashboardSuvery",
@@ -151,6 +180,12 @@ const router = createRouter({
           path: "/survey-list",
           name: "SurveyList",
           component: SurveyList,
+        },
+        {
+          path: '/survey-preview/:id',
+          name: 'SurveyPagePreview',
+          component: SurveyPage,
+          meta: { requiresAuth: true },
         },
         {
           path: '/survey-list/:id/details',
@@ -189,7 +224,7 @@ const router = createRouter({
       meta: { requiresCreditAuth: true }
     },
   ],
-  
+
 });
 
 router.beforeEach(async (to) => {
@@ -201,6 +236,9 @@ router.beforeEach(async (to) => {
   const isElecom = authStore.isElecomUser;
   const isSurvey = authStore.isSurveyUser;
   const isCreditLogged = creditStore.isLoggedIn;
+  const isElection = electionStore.start;
+  const meberType = authStore.member?.type;
+
 
   // ✅ auth
   if (to.meta.requiresAuth && !isAuth) {
@@ -219,6 +257,12 @@ router.beforeEach(async (to) => {
     }
   }
 
+  if (to.meta.isElection) {
+    if (!isElection) {
+      return { name: "Profile" };
+    }
+  }
+
   if (to.meta.requiresSurvey) {
     if (!isSurvey) {
       return { name: "Profile" };
@@ -228,6 +272,24 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresCreditAuth) {
     if (!isCreditLogged) {
       return { name: "CreditLogin" };
+    }
+  }
+
+  if (to.meta.electionDate) {
+    const now = Date.now();
+    const startDate = new Date(electionStore.from).getTime();
+    const endDate = new Date(electionStore.to).getTime();
+
+    // Check if current time is outside the election window
+    if (now < startDate || now > endDate) {
+      console.warn("Election is not currently active.");
+      return { name: "Profile" };
+    }
+  }
+
+  if (to.meta.isMemberRegular) {
+    if (meberType !== 'R') {
+      return { name: "Profile" };
     }
   }
 

@@ -18,7 +18,6 @@ export interface LoginResponse {
   activeSurveys?: Survey;
   member?: User;
   accessToken?: string;
-  
 }
 
 export interface RegisterPayload {
@@ -34,6 +33,8 @@ export interface User {
   email: string;
   name: string;
   verified: boolean;
+  type: string;
+  mobileNo?: string;
 }
 
 

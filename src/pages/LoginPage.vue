@@ -118,18 +118,11 @@ const isElection = computed(() => {
   const to = new Date(electionStore.to);
 
   return (
-    electionStore.start &&
-    today >= from &&
-    today <= to
+    electionStore.start
   );
 });
 
-
 const tabs = [{}];
-
-
-
-
 const candidates = [{}];
 
 const toggleForm = () => {
@@ -144,8 +137,6 @@ const toggleForgotPasswordForm = () => {
   forgotPasswordSuccess.value = null;
   isForgotPassword.value = !isForgotPassword.value;
 }
-
-
 
 async function onSubmit(payload: { memberNo: string; password: string; remember: boolean }) {
   // ✅ prevent double submit (very common cause of hitting 429)
@@ -163,7 +154,7 @@ async function onSubmit(payload: { memberNo: string; password: string; remember:
 
     if (response.data.success) {
       loginResult.value = response.data;
-      console.log('isSurvey: ', response.data.isSurvey)
+      console.log(loginResult.value);
       authStore.applyLoginResult(response.data);
       await router.push({ name: "Profile" });
       return;

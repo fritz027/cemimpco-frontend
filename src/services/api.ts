@@ -31,19 +31,19 @@ api.interceptors.request.use((config) => {
   // attach access token
   if (authStore.accessToken) {
     config.headers = config.headers ?? {};
-    (config.headers as any).Authorization = `Bearer ${authStore.accessToken}`;
+    (config.headers as { Authorization?: string }).Authorization = `Bearer ${authStore.accessToken}`;
   }
 
   // ✅ FormData: let browser set boundary
   if (config.data instanceof FormData) {
     if (config.headers) {
-      delete (config.headers as any)["Content-Type"];
-      delete (config.headers as any)["content-type"];
+      delete (config.headers as { "Content-Type"?: string })["Content-Type"];
+      delete (config.headers as { "content-type"?: string })["content-type"];
     }
   } else {
     // ✅ JSON: set content-type
     config.headers = config.headers ?? {};
-    (config.headers as any)["Content-Type"] = "application/json";
+    (config.headers as { "Content-Type"?: string })["Content-Type"] = "application/json";
   }
 
   return config;
@@ -72,7 +72,7 @@ api.interceptors.response.use(
           queue.push((token: string) => {
             try {
               original.headers = original.headers ?? {};
-              (original.headers as any).Authorization = `Bearer ${token}`;
+              (original.headers as { Authorization?: string }).Authorization = `Bearer ${token}`;
               resolve(api(original));
             } catch (e) {
               reject(e);
@@ -87,7 +87,7 @@ api.interceptors.response.use(
         // ✅ request new access token using refresh cookie
         const refreshRes = await api.post(REFRESH_URL);
 
-        const newToken = (refreshRes.data as any)?.accessToken;
+        const newToken = (refreshRes.data as { accessToken?: string })?.accessToken;
         if (!newToken) {
           // refresh response didn't include token
           authStore.logout?.();
@@ -103,15 +103,17 @@ api.interceptors.response.use(
 
         // retry the original request
         original.headers = original.headers ?? {};
-        (original.headers as any).Authorization = `Bearer ${newToken}`;
+        (original.headers as { Authorization?: string }).Authorization = `Bearer ${newToken}`;
         return api(original);
-      } catch (refreshErr: any) {
+      } catch (refreshErr: unknown) {
         // refresh failed (expired/invalid refresh token, user disabled, etc.)
         clearQueue();
         authStore.logout?.();
 
         // optional: you can inspect refreshErr.response.status === 403 etc.
-        return Promise.reject(refreshErr);
+        // if it's an AxiosError you can forward it directly, otherwise forward a generic Error
+        if (axios.isAxiosError(refreshErr)) return Promise.reject(refreshErr);
+        return Promise.reject(new Error('Refresh token request failed'));
       } finally {
         isRefreshing = false;
       }
