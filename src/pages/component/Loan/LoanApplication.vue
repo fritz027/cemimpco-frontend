@@ -1,7 +1,14 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getLoanTypes, getLoanApplicationType, getShareCapitalLoanLimit, sendOTPMessage, SaveLoanApplicationWithAttachements } from '@/services/loan.services'
+import {
+  getLoanTypes,
+  getLoanApplicationType,
+  getShareCapitalLoanLimit,
+  sendOTPMessage,
+  SaveLoanApplicationWithAttachements,
+  getMemberCompanyId
+} from '@/services/loan.services'
 import { useAuthStore } from '@/stores/auth'
 import OTPView from './LoanOTP.vue'
 
@@ -59,9 +66,12 @@ const spouseTelNo = ref('')
 
 // File uploads
 const companyID = ref<File | null>(null)
-const payslip = ref<File | null>(null)
 const imageIDPreview = ref('')
-const imagePayslipPreview = ref('')
+
+// Existing Company ID already on file (URL or base64 string).
+// When this is set, we show the image and hide the upload control.
+const existingIdImage = ref('')
+const hasExistingId = computed(() => !!existingIdImage.value)
 
 // UI state
 const loading = ref(false)
@@ -99,18 +109,14 @@ function validate(): boolean {
   if (!required(selectedloanterm.value)) fieldErrors.term = 'Required.'
   if (!required(installmentType.value)) fieldErrors.installmentType = 'Required.'
 
-  if (!companyID.value) {
-    fieldErrors.companyID = 'Required.'
-  } else {
-    const r = jpegOnlyRule(companyID.value)
-    if (r !== true) fieldErrors.companyID = r
-  }
-
-  if (!payslip.value) {
-    fieldErrors.payslip = 'Required.'
-  } else {
-    const r = jpegOnlyRule(payslip.value)
-    if (r !== true) fieldErrors.payslip = r
+  // Company ID is only required when there isn't one already on file.
+  if (!hasExistingId.value) {
+    if (!companyID.value) {
+      fieldErrors.companyID = 'Required.'
+    } else {
+      const r = jpegOnlyRule(companyID.value)
+      if (r !== true) fieldErrors.companyID = r
+    }
   }
 
   return Object.keys(fieldErrors).length === 0
@@ -124,6 +130,29 @@ async function LoanTypes() {
   if (result.status === 200 && result.data?.loanTypes) {
     console.log(result.data.loanTypes)
     loantype.value = result.data.loanTypes
+  }
+}
+
+// Load the Company ID image already on file for this member.
+// TODO: wire this to wherever your saved Company ID lives. Examples:
+//   existingIdImage.value = authStore.member?.companyIdUrl ?? ''
+// or via a service call:
+//   const res = await getMemberCompanyId(memberno, authStore.accessToken)
+//   if (res.data.success) existingIdImage.value = res.data.imageUrl
+async function loadExistingId() {
+  try {
+    const res = await getMemberCompanyId(memberno, authStore.accessToken)
+    // If the service returns a URL string:
+    if (res.data?.success && res.data.imageUrl) {
+      existingIdImage.value = res.data.imageUrl
+    }
+    // If it returns base64:
+    // if (res.data?.success && res.data.imageBase64) {
+    //   existingIdImage.value = `data:image/jpeg;base64,${res.data.imageBase64}`
+    // }
+  } catch (error) {
+    console.error(error)
+    existingIdImage.value = '' // fall back to showing the upload control
   }
 }
 
@@ -195,16 +224,6 @@ async function onIdChange(e: Event) {
     return
   }
   imageIDPreview.value = await readData(file)
-}
-
-async function onPayslipChange(e: Event) {
-  const file = (e.target as HTMLInputElement).files?.[0] ?? null
-  payslip.value = file
-  if (!file) {
-    imagePayslipPreview.value = ''
-    return
-  }
-  imagePayslipPreview.value = await readData(file)
 }
 
 function renameFile(filename: string, name: string): string {
@@ -343,18 +362,13 @@ async function loanApplyAfterOtp() {
     }
 
     formData.append('data', JSON.stringify(data))
+    // Only send a new Company ID file when one was actually picked.
+    // If an existing ID is already on file, the backend keeps it.
     if (companyID.value) {
       formData.append(
         'documents',
         companyID.value,
         renameFile(companyID.value.name, `${memberno}-companyID`)
-      )
-    }
-    if (payslip.value) {
-      formData.append(
-        'documents',
-        payslip.value,
-        renameFile(payslip.value.name, `${memberno}-payslip`)
       )
     }
 
@@ -375,7 +389,10 @@ async function loanApplyAfterOtp() {
   }
 }
 
-onMounted(LoanTypes)
+onMounted(async () => {
+  await LoanTypes()
+  await loadExistingId()
+})
 </script>
 
 <template>
@@ -544,44 +561,38 @@ onMounted(LoanTypes)
               <input :class="baseInput" v-model="spouseTelNo" type="text" placeholder="Tel No." />
             </div>
 
-            <!-- Company ID upload -->
+            <!-- Company ID -->
             <div>
               <label class="mb-2 block font-bold text-gray-700">
-                Company ID picture<span class="ml-0.5 text-lg text-red-500">*</span>
+                Company ID picture<span v-if="!hasExistingId" class="ml-0.5 text-lg text-red-500">*</span>
               </label>
-              <input
-                type="file"
-                accept=".jpg,.jpeg"
-                class="block w-full text-sm text-gray-600 file:mr-3 file:rounded file:border-0 file:bg-blue-400 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-500"
-                @change="onIdChange"
-              />
-              <p v-if="fieldErrors.companyID" class="mt-1 text-xs text-red-500">{{ fieldErrors.companyID }}</p>
-              <img
-                v-if="imageIDPreview"
-                :src="imageIDPreview"
-                alt="Company ID preview"
-                class="mt-3 max-h-[450px] rounded border border-gray-200 object-contain"
-              />
-            </div>
 
-            <!-- Payslip upload -->
-            <div>
-              <label class="mb-2 block font-bold text-gray-700">
-                Payslip picture<span class="ml-0.5 text-lg text-red-500">*</span>
-              </label>
-              <input
-                type="file"
-                accept=".jpg,.jpeg"
-                class="block w-full text-sm text-gray-600 file:mr-3 file:rounded file:border-0 file:bg-blue-400 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-500"
-                @change="onPayslipChange"
-              />
-              <p v-if="fieldErrors.payslip" class="mt-1 text-xs text-red-500">{{ fieldErrors.payslip }}</p>
-              <img
-                v-if="imagePayslipPreview"
-                :src="imagePayslipPreview"
-                alt="Payslip preview"
-                class="mt-3 max-h-[450px] rounded border border-gray-200 object-contain"
-              />
+              <!-- Existing ID already on file: show image only, no upload control -->
+              <template v-if="hasExistingId">
+                <img
+                  :src="existingIdImage"
+                  alt="Company ID on file"
+                  class="mt-1 max-h-[450px] rounded border border-gray-200 object-contain"
+                />
+                <p class="mt-1 text-xs text-gray-500">Using the Company ID already on file.</p>
+              </template>
+
+              <!-- No existing ID: allow upload -->
+              <template v-else>
+                <input
+                  type="file"
+                  accept=".jpg,.jpeg"
+                  class="block w-full text-sm text-gray-600 file:mr-3 file:rounded file:border-0 file:bg-blue-400 file:px-4 file:py-2 file:font-semibold file:text-white hover:file:bg-blue-500"
+                  @change="onIdChange"
+                />
+                <p v-if="fieldErrors.companyID" class="mt-1 text-xs text-red-500">{{ fieldErrors.companyID }}</p>
+                <img
+                  v-if="imageIDPreview"
+                  :src="imageIDPreview"
+                  alt="Company ID preview"
+                  class="mt-3 max-h-[450px] rounded border border-gray-200 object-contain"
+                />
+              </template>
             </div>
 
             <!-- Submit -->

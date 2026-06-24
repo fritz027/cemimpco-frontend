@@ -39,3 +39,7 @@ export const verifyOTP = (number: string, otp: string, token: string) => {
 export const SaveLoanApplicationWithAttachements = (data: FormData, token: string) => {
   return api.post(`/loan/save-loan-application`, data, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' } });
 }
+
+export const getMemberCompanyId = (token: string) => {
+  return api.get(`/loan/member-id-picture`, { headers: { Authorization: `Bearer ${token}` } });
+}
