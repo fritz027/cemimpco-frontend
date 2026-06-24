@@ -141,7 +141,7 @@ async function LoanTypes() {
 //   if (res.data.success) existingIdImage.value = res.data.imageUrl
 async function loadExistingId() {
   try {
-    const res = await getMemberCompanyId(memberno, authStore.accessToken)
+    const res = await getMemberCompanyId(authStore.accessToken)
     // If the service returns a URL string:
     if (res.data?.success && res.data.imageUrl) {
       existingIdImage.value = res.data.imageUrl
