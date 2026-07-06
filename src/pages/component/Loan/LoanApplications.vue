@@ -162,7 +162,7 @@ async function applyLoan() {
     const response = await getMemberMobileNo(authStore.accessToken)
     console.log(response.data)
     if (response.data.success) {
-      router.push({ name: 'LoanApplicationForm', params: { memberNo: authStore.member?.memberNo } })
+      router.push({ name: 'LoanApplicationSteps', params: { memberNo: authStore.member?.memberNo } })
     } else {
       alert(response.data.message)
     }

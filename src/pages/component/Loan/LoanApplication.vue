@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onBeforeUnmount   } from 'vue'
 import { useRouter } from 'vue-router'
 import {
   getLoanTypes,
@@ -74,7 +74,7 @@ const existingIdImage = ref('')
 const hasExistingId = computed(() => !!existingIdImage.value)
 
 // UI state
-const loading = ref(false)
+const loading = ref(true)
 const afterloading = ref(true)
 const errorbox = ref(false)
 const errormessage = ref('')
@@ -133,26 +133,14 @@ async function LoanTypes() {
   }
 }
 
-// Load the Company ID image already on file for this member.
-// TODO: wire this to wherever your saved Company ID lives. Examples:
-//   existingIdImage.value = authStore.member?.companyIdUrl ?? ''
-// or via a service call:
-//   const res = await getMemberCompanyId(memberno, authStore.accessToken)
-//   if (res.data.success) existingIdImage.value = res.data.imageUrl
 async function loadExistingId() {
   try {
-    const res = await getMemberCompanyId(authStore.accessToken)
-    // If the service returns a URL string:
-    if (res.data?.success && res.data.imageUrl) {
-      existingIdImage.value = res.data.imageUrl
-    }
-    // If it returns base64:
-    // if (res.data?.success && res.data.imageBase64) {
-    //   existingIdImage.value = `data:image/jpeg;base64,${res.data.imageBase64}`
-    // }
-  } catch (error) {
-    console.error(error)
-    existingIdImage.value = '' // fall back to showing the upload control
+    const res = await getMemberCompanyId( authStore.accessToken)
+    console.log(res.data)
+    existingIdImage.value = URL.createObjectURL(res.data)
+    console.log(existingIdImage.value)
+  } catch {
+    existingIdImage.value = '' // 404 or error → show the upload control
   }
 }
 
@@ -366,7 +354,7 @@ async function loanApplyAfterOtp() {
     // If an existing ID is already on file, the backend keeps it.
     if (companyID.value) {
       formData.append(
-        'documents',
+        'image',
         companyID.value,
         renameFile(companyID.value.name, `${memberno}-companyID`)
       )
@@ -392,6 +380,12 @@ async function loanApplyAfterOtp() {
 onMounted(async () => {
   await LoanTypes()
   await loadExistingId()
+})
+
+onBeforeUnmount(() => {
+  if (existingIdImage.value.startsWith('blob:')) {
+    URL.revokeObjectURL(existingIdImage.value)
+  }
 })
 </script>
 
@@ -621,25 +615,75 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- Loading / success overlay -->
-    <div
-      v-if="loading"
-      class="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
+   <!-- Loading / success overlay -->
+    <transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0"
+      leave-active-class="transition duration-200 ease-in"
+      leave-to-class="opacity-0"
     >
-      <div v-if="afterloading" class="w-full max-w-lg rounded-lg bg-blue-400 px-6 py-8 text-white">
-        <h3 class="mb-8 pt-2 text-center text-xl font-semibold">Saving...</h3>
-        <div class="flex justify-center">
-          <span
-            class="inline-block h-20 w-20 animate-spin rounded-full border-8 border-white/40 border-t-white"
-            aria-label="Loading"
-          ></span>
+      <div
+        v-if="loading"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 px-4 backdrop-blur-sm"
+      >
+        <!-- Saving state -->
+        <div
+          v-if="afterloading"
+          class="w-full max-w-sm rounded-2xl bg-white px-8 py-10 text-center shadow-2xl ring-1 ring-slate-100"
+        >
+          <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center">
+            <span
+              class="inline-block h-16 w-16 animate-spin rounded-full border-[6px] border-blue-100 border-t-blue-500"
+              aria-label="Saving"
+            ></span>
+          </div>
+          <h3 class="text-lg font-semibold text-slate-800">Saving your application</h3>
+          <p class="mt-1.5 text-sm text-slate-500">Please wait a moment…</p>
+        </div>
+
+        <!-- Success state -->
+        <div
+          v-else
+          class="w-full max-w-sm rounded-2xl bg-white px-8 py-10 text-center shadow-2xl ring-1 ring-slate-100"
+        >
+          <!-- Animated check badge -->
+          <div class="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-emerald-50">
+            <div class="flex h-14 w-14 items-center justify-center rounded-full bg-emerald-500">
+              <svg
+                class="h-8 w-8 text-white"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="3"
+              >
+                <path
+                  class="check-path"
+                  d="M20 6 9 17l-5-5"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </div>
+          </div>
+          <h2 class="text-xl font-bold text-slate-800">Application submitted!</h2>
+          <p class="mt-2 text-sm leading-relaxed text-slate-500">
+            Thank you for applying. We'll be in touch soon — have a great day!
+          </p>
         </div>
       </div>
-      <div v-else class="w-full max-w-lg rounded-lg bg-green-400 px-6 py-10 text-white">
-        <h2 class="pt-2 text-center text-2xl font-semibold">
-          Thank you for applying, have a nice day!
-        </h2>
-      </div>
-    </div>
+    </transition>
   </div>
 </template>
+<style scoped>
+.check-path {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: draw-check 0.4s ease-out 0.15s forwards;
+}
+
+@keyframes draw-check {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+</style>

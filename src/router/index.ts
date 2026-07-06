@@ -30,6 +30,7 @@ import ViewCandidates from '@/pages/ViewCandidates.vue';
 import PatronageDividend from '@/pages/PatronageDividend.vue';
 import LoanApplications from '@/pages/component/Loan/LoanApplications.vue';
 import LoanApplication from '@/pages/component/Loan/LoanApplication.vue';
+import LoanApplicationSteps from '@/pages/component/Loan/LoanApplicationSteps.vue';
 import { useAuthStore } from "@/stores/auth";
 import { useElectionStore } from '@/stores/election';
 import { useCreditStore } from '@/stores/credit';
@@ -124,6 +125,13 @@ const router = createRouter({
       path: '/loan-application/:memberNo',
       name: 'LoanApplicationForm',
       component: LoanApplication,
+      meta: { requiresAuth: true, isMemberRegular: true  },
+      props: true,
+    },
+    {
+      path: '/loan-application-steps/:memberNo',
+      name: 'LoanApplicationSteps',
+      component: LoanApplicationSteps,
       meta: { requiresAuth: true, isMemberRegular: true  },
       props: true,
     },

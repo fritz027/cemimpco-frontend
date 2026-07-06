@@ -1,6 +1,7 @@
 <script setup lang="ts">
   import AppHeader from './pages/AppHeader.vue';
   import bg from '@/assets/cemimpco-background.png'
+  import SnackbarHost from './pages/component/Snackbar/SnackbarHost.vue';
 </script>
 
 <template>
@@ -12,17 +13,16 @@
 
   <!-- App Layout -->
   <div class="flex min-h-dvh flex-col">
-
-    <!-- Header (now normal flow, will scroll) -->
     <header class="z-10">
       <AppHeader />
     </header>
 
-    <!-- Scrollable Main -->
     <main class="flex-1 overflow-y-auto">
       <router-view />
     </main>
-
   </div>
+
+  <!-- Snackbar overlay (renders once, on top of everything) -->
+  <SnackbarHost />
 </template>
 

@@ -147,6 +147,12 @@ async function reSendOtp() {
   }
 }
 
+const maskedMobile = computed(() => {
+  const m = authStore.member?.mobileNo ?? ''
+  if (m.length < 4) return 'your phone'
+  return `${m.slice(0, 3)}••••${m.slice(-2)}`
+})
+
 // ---- Lifecycle -----------------------------------------------------------
 
 onMounted(() => startCountdown(props.expiredDate))
@@ -158,11 +164,11 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="relative">
+  <div class="relative mx-auto w-full max-w-sm rounded-2xl bg-white p-6 sm:p-8 shadow-xl ring-1 ring-slate-100">
     <!-- Close button -->
     <button
       type="button"
-      class="absolute right-0 top-0 inline-flex h-8 w-8 items-center justify-center rounded-full bg-blue-500 text-white shadow transition hover:bg-blue-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+      class="absolute right-4 top-4 inline-flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
       aria-label="Close"
       @click="closeOTPView"
     >
@@ -171,12 +177,28 @@ onBeforeUnmount(() => {
       </svg>
     </button>
 
-    <!-- Title -->
-    <div class="my-2 text-center text-2xl font-bold text-gray-800">Enter OTP</div>
+    <!-- Icon badge -->
+    <div class="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-blue-50 text-blue-600">
+      <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+        <rect x="3" y="5" width="18" height="14" rx="2" />
+        <path d="m3 7 9 6 9-6" stroke-linecap="round" stroke-linejoin="round" />
+      </svg>
+    </div>
+
+    <!-- Title + subtitle -->
+    <div class="text-center">
+      <h2 class="text-xl font-bold text-slate-800">Verify your number</h2>
+      <p class="mt-1.5 text-sm text-slate-500">
+        Enter the {{ length }}-digit code we sent to
+        <span class="font-medium text-slate-700">
+          {{ maskedMobile }}
+        </span>
+      </p>
+    </div>
 
     <!-- OTP input + loading overlay -->
-    <div class="relative mx-auto mt-5" style="max-width: 300px">
-      <div class="flex justify-center gap-2">
+    <div class="relative mx-auto mt-7 w-full">
+      <div class="flex justify-center gap-2 sm:gap-2.5">
         <input
           v-for="(digit, index) in digits"
           :key="index"
@@ -186,7 +208,8 @@ onBeforeUnmount(() => {
           inputmode="numeric"
           maxlength="1"
           :disabled="loading"
-          class="h-12 w-10 rounded border border-gray-300 text-center text-xl font-semibold text-gray-800 focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 disabled:bg-gray-100"
+          class="h-14 w-11 sm:w-12 rounded-xl border-2 bg-slate-50 text-center text-2xl font-semibold text-slate-800 transition-all duration-150 focus:border-blue-500 focus:bg-white focus:outline-none focus:ring-4 focus:ring-blue-100 disabled:opacity-60"
+          :class="digit ? 'border-blue-400 bg-white' : 'border-slate-200'"
           @input="onInput(index, $event)"
           @keydown="onKeydown(index, $event)"
           @paste="onPaste"
@@ -195,44 +218,50 @@ onBeforeUnmount(() => {
 
       <div
         v-if="loading"
-        class="absolute inset-0 flex items-center justify-center rounded bg-white/70"
+        class="absolute inset-0 flex items-center justify-center rounded-xl bg-white/80 backdrop-blur-sm"
       >
         <span
-          class="inline-block h-9 w-9 animate-spin rounded-full border-4 border-blue-200 border-t-blue-400"
+          class="inline-block h-9 w-9 animate-spin rounded-full border-4 border-blue-100 border-t-blue-500"
           aria-label="Verifying"
         ></span>
       </div>
     </div>
 
     <!-- Resend area -->
-    <div class="mt-4 text-center">
-      <p v-if="reSendCountDown > 0" class="text-gray-600">
-        Please wait to resend OTP:
-        <strong class="text-red-500">{{ formatCountDown }}</strong>
+    <div class="mt-7 text-center text-sm">
+      <p v-if="reSendCountDown > 0" class="text-slate-500">
+        Didn't get the code? Resend in
+        <strong class="font-semibold text-blue-600">{{ formatCountDown }}</strong>
       </p>
       <button
         v-else
         type="button"
-        class="mb-5 mt-3 rounded bg-blue-400 px-5 py-2.5 font-bold text-white shadow transition hover:bg-blue-500 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+        class="font-semibold text-blue-600 transition hover:text-blue-700 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 rounded"
         @click="reSendOtp"
       >
-        Re Send OTP
+        Resend OTP
       </button>
     </div>
 
     <!-- Snackbar / toast -->
     <transition
-      enter-active-class="transition duration-200"
+      enter-active-class="transition duration-200 ease-out"
       enter-from-class="translate-y-2 opacity-0"
-      leave-active-class="transition duration-200"
+      leave-active-class="transition duration-200 ease-in"
       leave-to-class="translate-y-2 opacity-0"
     >
       <div
         v-if="snackbar"
-        class="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 rounded px-4 py-3 text-sm text-white shadow-lg"
-        :class="snackbarColor === 'success' ? 'bg-blue-500' : 'bg-red-500'"
+        class="fixed bottom-6 left-1/2 z-50 flex -translate-x-1/2 items-center gap-2 rounded-xl px-4 py-3 text-sm font-medium text-white shadow-lg"
+        :class="snackbarColor === 'success' ? 'bg-emerald-500' : 'bg-rose-500'"
         role="status"
       >
+        <svg v-if="snackbarColor === 'success'" class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M20 6 9 17l-5-5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
+        <svg v-else class="h-4 w-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M12 8v4m0 4h.01M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Z" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
         {{ message }}
       </div>
     </transition>
