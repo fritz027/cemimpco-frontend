@@ -18,6 +18,7 @@ export interface LoginResponse {
   activeSurveys?: Survey;
   member?: User;
   accessToken?: string;
+  laSettings?: LoanApplicationSettings;
 }
 
 export interface RegisterPayload {
@@ -48,6 +49,7 @@ export interface AuthState {
   elecomUser: boolean;
   isSurvey: boolean;
   survey?: Survey | null;
+  laSettings?: LoanApplicationSettings | null;
 }
 
 export interface AuthCreditState {
@@ -61,3 +63,9 @@ export interface Survey {
   total_question: number;
   status: "1" | "0";
 }
+
+export interface LoanApplicationSettings {
+  laUnderConstruction: boolean;
+  laUsers: boolean;
+}
+

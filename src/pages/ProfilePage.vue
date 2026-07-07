@@ -18,7 +18,11 @@ const voteStatusLoading = ref(false);
 const surveyId = ref<string | null>(null) ;
 const surveyTitle = ref('');
 const memberType = ref<string>("");
+const laSettings = computed(() => authStore.getLaSettings);
 
+const canApplyLoan = computed(() =>
+  !laSettings.value?.laUnderConstruction || !!laSettings.value?.laUsers
+);
 
 
 onMounted(async () => {
@@ -147,10 +151,23 @@ const timeDeposits = ref<TimeDeposit[]>([]);
 const loans = ref<MemberLoan[]>([]);
 const showCaption = ref(true);
 const showTimeDeposits = ref(true);
+const showConstructionNotice = ref(false);
 
 
 function money(n: number) {
   return new Intl.NumberFormat("en-PH", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+}
+
+function handleLoanClick() {
+  if (canApplyLoan.value) {
+    loanApplication();
+    return;
+  }
+  // under construction and not an allowed user
+  showConstructionNotice.value = true;
+  setTimeout(() => {
+    showConstructionNotice.value = false;
+  }, 4000); // auto-hide after 4s
 }
 
 async function openSurveyModal() {
@@ -463,17 +480,18 @@ async function viewDeposit (code: string){
             <button
               @click="viewDividend"
               class="h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-sm
-                     hover:bg-[#2f8fd2] active:scale-[0.99] transition"
+                    hover:bg-[#2f8fd2] active:scale-[0.99] transition"
             >
               VIEW DIVIDEND
             </button>
 
             <button
-              @click="loanApplication"
-              class="h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-sm
-                     hover:bg-[#2f8fd2] active:scale-[0.99] transition"
+              @click="handleLoanClick"
+              :class="canApplyLoan
+                ? 'h-12 rounded-xl bg-[#3FA3E8] text-white font-semibold tracking-wide shadow-sm hover:bg-[#2f8fd2] active:scale-[0.99] transition'
+                : 'h-12 rounded-xl bg-slate-200 text-slate-500 font-semibold tracking-wide shadow-sm cursor-not-allowed'"
             >
-              LOAN APPLICATION
+              {{ canApplyLoan ? 'LOAN APPLICATION' : 'LOAN APPLICATION UNDER CONSTRUCTION' }}
             </button>
           </div>
         </div>
@@ -785,6 +803,17 @@ async function viewDeposit (code: string){
       <span class="text-2xl animate-wave">👋</span>
     </button>
   </div>
+  <!-- UNDER CONSTRUCTION TOAST -->
+  <Transition name="fade">
+    <div
+      v-if="showConstructionNotice"
+      class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50
+            rounded-xl bg-slate-800 text-white px-5 py-3 shadow-xl
+            text-sm font-semibold flex items-center gap-2"
+    >
+      🚧 Loan Application is still under construction. Please check back soon.
+    </div>
+  </Transition>
 </template>
 <style scoped>
 @keyframes wave {
@@ -816,5 +845,14 @@ async function viewDeposit (code: string){
 
 .animate-fade-in {
   animation: fadeInUp 0.6s ease-out;
+}
+
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 </style>

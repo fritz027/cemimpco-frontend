@@ -12,7 +12,7 @@
           @toggle-passwordForm="toggleForgotPasswordForm"
           @toggle-form="toggleForm"
           @clear-error="errorMessage = null"
-          @submit="onSubmit" 
+          @submit="onSubmit"
         />
         <RegisterPage
           v-if="isRegisterForm"
@@ -25,7 +25,7 @@
           @resend-confirmation="onResendConfirmation"
         />
 
-        <ForgotPassword 
+        <ForgotPassword
           v-if="isForgotPassword"
           :error-message="errorMessage"
           :success-message="forgotPasswordSuccess"
@@ -42,7 +42,7 @@
           :per-page="4"
         />
 
-        <TutorialVideo 
+        <TutorialVideo
           v-else
         />
       </div>
@@ -113,9 +113,9 @@ onMounted(async () => {
 });
 
 const isElection = computed(() => {
-  const today = new Date();
-  const from = new Date(electionStore.from);
-  const to = new Date(electionStore.to);
+  // const today = new Date();
+  // const from = new Date(electionStore.from);
+  // const to = new Date(electionStore.to);
 
   return (
     electionStore.start
@@ -172,7 +172,7 @@ async function onSubmit(payload: { memberNo: string; password: string; remember:
     console.log(err);
     if (axios.isAxiosError(err)) {
       const status = err.response?.status;
-      const data = err.response?.data as any;
+      const data = err.response?.data as unknown as { message?: string } | undefined;
 
       errorMessage.value =
         data?.message ||
@@ -221,13 +221,15 @@ async function onSubmitRegister(payload: {
 
       // OPTION B: go back to login automatically after success
       isRegisterForm.value = false;
-   
+
     } else {
       errorMessage.value = response.data.message || "Registration failed.";
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     errorMessage.value =
-      error?.response?.data?.message || error?.message || "Registration failed. Please try again.";
+      (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+      (error as { message?: string }).message ||
+      "Registration failed. Please try again.";
   } finally {
     isLoading.value = false;
   }
@@ -242,7 +244,7 @@ async function onResendConfirmation(no: string) {
     const response = await resendConfirmationEmail(no); // your API
 
     if (response.data.success) {
-      
+
         isResendConfirmation.value = false
         resendMessage.value =
         "Confirmation email has been sent again. Please check your inbox.";
@@ -252,9 +254,10 @@ async function onResendConfirmation(no: string) {
     } else {
       errorMessage.value = response.data.message;
     }
-  } catch (error: any) {
+  } catch (error: unknown) {
     errorMessage.value =
-      error?.response?.data?.message || "Failed to resend confirmation.";
+      (error as { response?: { data?: { message?: string } } }).response?.data?.message ||
+      "Failed to resend confirmation.";
   } finally {
     isLoading.value = false;
   }

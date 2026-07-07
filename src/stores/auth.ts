@@ -1,5 +1,5 @@
 import { defineStore } from "pinia";
-import type { AuthState, LoginResponse, User, Survey } from "@/types/auth";
+import type { AuthState, LoginResponse, User, Survey, LoanApplicationSettings } from "@/types/auth";
 import router from '@/router';
 import { BoldIcon } from "@heroicons/vue/24/solid";
 
@@ -13,6 +13,7 @@ export const useAuthStore = defineStore("auth", {
     elecomUser: false,
     isSurvey: false,
     survey: null,
+    laSettings: null,
   }),
   persist: true,
   getters: {
@@ -23,6 +24,7 @@ export const useAuthStore = defineStore("auth", {
     isSurveyUser: (state) => state.surveyUser,
     isElecomUser: (state) => state.elecomUser,
     isActivateSurvey: (state) => state.isSurvey,
+    getLaSettings:(state) => state.laSettings,
     getSurvey: (state) => state.survey,
   },
 
@@ -35,7 +37,6 @@ export const useAuthStore = defineStore("auth", {
       this.elecomUser = Boolean(result.isElecomUser)
       this.isSurvey = Boolean(result.isSurvey)
 
-
       if (this.success && result.accessToken) {
         this.accessToken = result.accessToken
         localStorage.setItem("accessToken", this.accessToken)
@@ -43,6 +44,7 @@ export const useAuthStore = defineStore("auth", {
 
       this.member = result.member ?? null
       this.survey = result.activeSurveys ?? null
+      this.laSettings = result.laSettings ?? null
     },
 
     setAccessToken(token: string) {

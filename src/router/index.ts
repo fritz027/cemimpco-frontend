@@ -119,20 +119,20 @@ const router = createRouter({
       path: '/loan-application',
       name: 'LoanApplication',
       component: LoanApplications,
-      meta: { requiresAuth: true, isMemberRegular: true  },
+      meta: { requiresAuth: true, isMemberRegular: true, isUnderConstruction: true  },
     },
     {
       path: '/loan-application/:memberNo',
       name: 'LoanApplicationForm',
       component: LoanApplication,
-      meta: { requiresAuth: true, isMemberRegular: true  },
+      meta: { requiresAuth: true, isMemberRegular: true, isUnderConstruction: true  },
       props: true,
     },
     {
       path: '/loan-application-steps/:memberNo',
       name: 'LoanApplicationSteps',
       component: LoanApplicationSteps,
-      meta: { requiresAuth: true, isMemberRegular: true  },
+      meta: { requiresAuth: true, isMemberRegular: true, isUnderConstruction: true  },
       props: true,
     },
     {
@@ -262,6 +262,15 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresElecom) {
     if (!isElecom) {
       return { name: "Profile" }; // or { name: "NotAuthorized" } / { path: "/" }
+    }
+  }
+
+  if (to.meta.isUnderConstruction) {
+    const laSettings = authStore.getLaSettings;
+
+    const canProceed = !laSettings?.laUnderConstruction || !!laSettings?.laUsers;
+    if (!canProceed) {
+      return { name: "Profile" };
     }
   }
 
