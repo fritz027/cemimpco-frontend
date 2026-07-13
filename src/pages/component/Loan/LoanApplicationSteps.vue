@@ -7,7 +7,8 @@ import {
   getShareCapitalLoanLimit,
   sendOTPMessage,
   SaveLoanApplicationWithAttachements,
-  getMemberCompanyId
+  getMemberCompanyId,
+  getMemberPersonalInformation
 } from '@/services/loan.services'
 
 import { useAuthStore } from '@/stores/auth'
@@ -22,6 +23,7 @@ interface LoanDetails {
   loanPurpose: string
   loanAmount: number | null
   interestRate: number | null
+  serviceFee: number | null
   term: number | null            // in months
   installmentType: string
   items: string
@@ -41,12 +43,15 @@ interface FinancialInfo {
 }
 
 interface PersonalInfo {
-  employeeName: string
+  employeerName: string
   homeOwnership: string
   homeAddress: string
+  homeAddress2: string
   position: string
   yearsInCompany: number | null
   lineLeader: string
+  birthDate: string
+  civilStatus: string
   companyTelephone: string
   spouse: string
   spouseAddress: string
@@ -64,8 +69,15 @@ interface LoanApplicationType {
   term: number | null
   insType: string
   int_rate: number
+  service_fee: number | null
 }
 
+interface DelinquencyHistory {
+  memberNo: string
+  activeLoans: number
+  delinquentLoans: number
+  isDelinquent: boolean
+}
 /* ------------------------------------------------------------------ */
 /* Setup                                                               */
 /* ------------------------------------------------------------------ */
@@ -95,8 +107,18 @@ const expiredDate = ref<number | undefined>(undefined)
 const memberNo = props.memberNo
 const loading = ref<boolean>(false)
 const afterLoading = ref<boolean>(true)
+const serviceFeeAmount = computed<number>(() =>
+  ((loan.loanAmount ?? 0) * (loan.serviceFee ?? 0)) / 100)
+
+const netProceeds = computed<number>(() =>
+  Math.max((loan.loanAmount ?? 0) - serviceFeeAmount.value, 0))
 // const companyId = ref<File | null>(null)
 // const imageIDPreview = ref('')
+
+
+const blockedByDelinquency = computed<boolean>(() =>
+  selectedLoanType.value === '159-004' && Number(delinquency.isDelinquent ??  0) > 0
+)
 
 
 const loan = reactive<LoanDetails>({
@@ -104,9 +126,17 @@ const loan = reactive<LoanDetails>({
   loanPurpose: '',
   loanAmount: null,
   interestRate: 1.5,
+  serviceFee: 0,
   term: null,
   installmentType: '',
   items: '',
+})
+
+const delinquency = reactive<DelinquencyHistory>({
+  memberNo: '',
+  activeLoans: 0,
+  delinquentLoans: 0,
+  isDelinquent: false
 })
 
 const finance = reactive<FinancialInfo>({
@@ -123,9 +153,10 @@ const finance = reactive<FinancialInfo>({
 })
 
 const personal = reactive<PersonalInfo>({
-  employeeName: '',
+  employeerName: '',
   homeOwnership: '',
   homeAddress: '',
+  homeAddress2: '',
   position: '',
   yearsInCompany: null,
   lineLeader: '',
@@ -133,6 +164,8 @@ const personal = reactive<PersonalInfo>({
   spouse: '',
   spouseAddress: '',
   telephoneNumber: '',
+  birthDate: '',
+  civilStatus: ''
 })
 
 /* ID upload */
@@ -176,12 +209,12 @@ function removeId() {
 const loanTypes = ref<LoanType[]>([])
 const selectedLoanType = ref<string | null>(null);
 const purposes = ['Home Improvement', 'Medical', 'Education', 'Business Capital', 'Debt Consolidation', 'Personal', 'Others']
-const ranks = ['Rank & File', 'Senior Staff', 'Team Leader', 'Supervisor', 'Manager']
-const delinquencyOptions = [
-  { value: 'none', label: 'No history' },
-  { value: 'minor', label: 'Minor (resolved)' },
-  { value: 'major', label: 'Major' },
-]
+const ranks = ['1','2','3A','3B','3C','4A','4B', '5A', '5B', '6', '7', '8']
+// const delinquencyOptions = [
+//   { value: 'none', label: 'No history' },
+//   { value: 'minor', label: 'Minor (resolved)' },
+//   { value: 'major', label: 'Major' },
+// ]
 const ownershipOptions = ['Owned', 'Rented', 'Mortgaged', 'Living with relatives', 'Company-provided']
 
 /* ------------------------------------------------------------------ */
@@ -242,10 +275,10 @@ function validateStep(s: number): boolean {
       ['netPay', finance.netPay],
       ['basicSalary', finance.basicSalary],
       ['rank', finance.rank],
-      ['delinquencyHistory', finance.delinquencyHistory],
+      // ['delinquencyHistory', finance.delinquencyHistory],
     ],
     3: [
-      ['employeeName', personal.employeeName],
+      ['employeerName', personal.employeerName],
       ['homeOwnership', personal.homeOwnership],
       ['homeAddress', personal.homeAddress],
       ['position', personal.position],
@@ -265,10 +298,30 @@ function validateStep(s: number): boolean {
     errors['idPicture'] = true
     ok = false
   }
+
+
+  // --- extra business-rule validation ---
+  if (s === 1) {
+    const amount = Number(loan.loanAmount)
+    const limit = Number(loanLimit.value)   // ← whatever holds your ₱ limit
+
+    if (Number.isNaN(amount) || amount <= 0) {
+      errors.loanAmount = true
+      ok = false
+    } else if (amount > limit) {
+      errors.loanAmount = true
+      ok = false
+    }
+  }
+
   return ok
 }
 
 function next() {
+  if (blockedByDelinquency.value) {
+    snackbar.error('You cannot proceed with this application due to loan delinquency.', { duration: 2000 })
+    return
+  }
   if (validateStep(step.value)) {
     showErrors.value = false
     step.value = Math.min(step.value + 1, totalSteps)
@@ -436,13 +489,27 @@ const CheckSelectedLoanType = async () => {
   loan.installmentType = loanType.insType
   loan.interestRate = loanType.int_rate
   loan.loanType = selectedLoanType.value
+  console.log('Selected Loan Type:', selectedLoanType.value, 'Service Fee:', loanType.service_fee )
+  loan.serviceFee = loanType.service_fee ?? 0
 
-  if (selectedLoanType.value === '159-005') {
-    isOwnMoney.value = true
-    loanLimit.value = await ownMoneyLimit()
+  console.log('Delinquency Status:', delinquency.isDelinquent, selectedLoanType.value)
+  if (selectedLoanType.value === '401-009' ) {
+    if (delinquency.isDelinquent) {
+      isOwnMoney.value = false
+      loanLimit.value = 0
+      snackbar.error('You are not eligible for this loan type due to delinquency.', { duration: 1500 })
+    } else {
+      isOwnMoney.value = true
+      loanLimit.value = await ownMoneyLimit()
+    }
   } else {
-    isOwnMoney.value = false
-    loanLimit.value = loanType.online_loan_limit
+    if (selectedLoanType.value === '159-005') {
+      isOwnMoney.value = true
+      loanLimit.value = await ownMoneyLimit()
+    } else {
+      isOwnMoney.value = false
+      loanLimit.value = loanType.online_loan_limit
+    }
   }
 }
 
@@ -486,10 +553,34 @@ const loadExistingID = async () => {
   }
 }
 
+const loadPersonalInformation = async () => {
+  try {
+    const response = await getMemberPersonalInformation(authStore.accessToken)
+    if (response.status === 200 && response.data?.profile) {
+      personal.homeAddress = response.data.profile.addr_street1
+      personal.homeAddress2 = response.data.profile.addr_street2
+      personal.birthDate = response.data.profile.bdate
+      personal.civilStatus = response.data.profile.civ_stat
+      personal.spouse = response.data.profile.spouse
+      personal.telephoneNumber = response.data.profile.telno
+      personal.spouseAddress = response.data.profile.addr_street1
+      if (response.data?.delinquencyHistory) {
+        delinquency.memberNo = response.data.delinquencyHistory.member_no
+        delinquency.activeLoans = response.data.delinquencyHistory.active_loans
+        delinquency.delinquentLoans = response.data.delinquencyHistory.delinquent_loans
+        delinquency.isDelinquent = Number(response.data.delinquencyHistory.is_delinquent ?? 0) > 0
+      }
+    }
+
+  } catch (error) {
+    console.error('Error loading personal information:', error)
+  }
+}
 
 onMounted(() => {
   loadLoanType()
   loadExistingID()
+  loadPersonalInformation()
 })
 
 onBeforeUnmount(() => {
@@ -536,7 +627,7 @@ onBeforeUnmount(() => {
         </div>
         <h2 class="text-xl font-bold text-slate-900">Application submitted</h2>
         <p class="mx-auto mt-2 max-w-md text-sm text-slate-500">
-          Thanks, {{ personal.employeeName || 'applicant' }}. Your {{ loan.loanType || 'loan' }} request for
+          Thanks, {{ personal.employeerName || 'applicant' }}. Your {{ loan.loanType || 'loan' }} request for
           <span class="font-semibold text-slate-700">{{ peso(loan.loanAmount ?? 0) }}</span>
           has been received and is now pending review.
         </p>
@@ -643,6 +734,10 @@ onBeforeUnmount(() => {
                   <label class="mb-1.5 block text-sm font-medium text-slate-700">Installment type <span class="text-rose-500">*</span></label>
                   <input v-model="loan.installmentType" :class="fieldClass('installmentType')" placeholder="Installment Type" readonly/>
                 </div>
+                <div>
+                  <p class="text-xs text-slate-500">Service fee ({{ loan.serviceFee ?? 0 }}%)</p>
+                  <p class="text-sm font-semibold text-slate-700">{{ peso(serviceFeeAmount) }}</p>
+                </div>
               </div>
 
               <!-- Live amortization estimate -->
@@ -652,11 +747,17 @@ onBeforeUnmount(() => {
                     <p class="text-xs font-medium uppercase tracking-wide text-emerald-700">Estimated installment</p>
                     <p class="text-2xl font-bold text-emerald-800">{{ peso(displayInstallment) }}</p>
                     <p class="text-xs text-emerald-600">{{ installmentLabel }}</p>
+                    <p v-if="serviceFeeAmount > 0" class="mt-1 text-xs text-emerald-700">
+                      Net proceeds after fee: <span class="font-semibold">{{ peso(netProceeds) }}</span>
+                    </p>
                   </div>
 
-                  <div class="grid grid-cols-2 gap-4 text-right sm:gap-6">
+                  <div class="grid grid-cols-3 gap-4 text-right sm:gap-6">
                     <div>
-
+                      <p class="text-xs text-slate-500">Principal</p>
+                      <p class="text-sm font-semibold text-slate-700">{{ peso(loan.loanAmount ?? 0) }}</p>
+                    </div>
+                    <div>
                       <p class="text-xs text-slate-500">Total interest</p>
                       <p class="text-sm font-semibold text-slate-700">{{ peso(totalInterest > 0 ? totalInterest : 0) }}</p>
                     </div>
@@ -670,8 +771,24 @@ onBeforeUnmount(() => {
                   Estimate only. Final terms are confirmed on approval.
                 </p>
               </div>
+              <!-- Delinquency block notice -->
+              <div v-if="blockedByDelinquency"
+                class="mt-6 flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-4">
+                <svg viewBox="0 0 24 24" fill="none" class="mt-0.5 h-5 w-5 shrink-0 text-rose-500"
+                    stroke="currentColor" stroke-width="2">
+                  <path d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z"
+                        stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div>
+                  <p class="text-sm font-semibold text-rose-700">Application cannot proceed</p>
+                  <p class="mt-0.5 text-sm text-rose-600">
+                    Our records show you currently have {{ delinquency.delinquentLoans }} delinquent
+                    loan{{ delinquency.delinquentLoans === 1 ? '' : 's' }}. Please settle your past-due
+                    balances or visit the office for assistance before applying for this loan type.
+                  </p>
+                </div>
+              </div>
             </section>
-
             <!-- ====================== STEP 2 ====================== -->
             <section v-show="step === 2">
               <h2 class="text-base font-bold text-slate-900">Financial information</h2>
@@ -691,7 +808,7 @@ onBeforeUnmount(() => {
                   <input v-model.number="finance.sssPagibig" type="number" min="0" placeholder="0.00" :class="fieldClass('sssPagibig')" />
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Health insurance (PhilHealth)</label>
+                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Insurance</label>
                   <input v-model.number="finance.healthInsurance" type="number" min="0" placeholder="0.00" :class="fieldClass('healthInsurance')" />
                 </div>
                 <div>
@@ -717,13 +834,13 @@ onBeforeUnmount(() => {
                     <option v-for="r in ranks" :key="r" :value="r">{{ r }}</option>
                   </select>
                 </div>
-                <div>
+                <!-- <div>
                   <label class="mb-1.5 block text-sm font-medium text-slate-700">History of delinquency <span class="text-rose-500">*</span></label>
                   <select v-model="finance.delinquencyHistory" :class="fieldClass('delinquencyHistory')">
                     <option value="" disabled>Select</option>
                     <option v-for="d in delinquencyOptions" :key="d.value" :value="d.value">{{ d.label }}</option>
                   </select>
-                </div>
+                </div> -->
               </div>
             </section>
 
@@ -734,8 +851,8 @@ onBeforeUnmount(() => {
 
               <div class="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
                 <div class="sm:col-span-2">
-                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Employee's name <span class="text-rose-500">*</span></label>
-                  <input v-model="personal.employeeName" type="text" placeholder="Full name" :class="fieldClass('employeeName')" />
+                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Employeer's name <span class="text-rose-500">*</span></label>
+                  <input v-model="personal.employeerName" type="text" placeholder="Full name" :class="fieldClass('employeerName')" />
                 </div>
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-slate-700">Home ownership <span class="text-rose-500">*</span></label>
@@ -745,12 +862,16 @@ onBeforeUnmount(() => {
                   </select>
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Position / Rank <span class="text-rose-500">*</span></label>
+                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Position <span class="text-rose-500">*</span></label>
                   <input v-model="personal.position" type="text" placeholder="e.g. Machine Operator" :class="fieldClass('position')" />
                 </div>
                 <div class="sm:col-span-2">
                   <label class="mb-1.5 block text-sm font-medium text-slate-700">Home address <span class="text-rose-500">*</span></label>
                   <input v-model="personal.homeAddress" type="text" placeholder="House no., street, barangay, city" :class="fieldClass('homeAddress')" />
+                </div>
+                <div class="sm:col-span-2">
+                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Home address 2 </label>
+                  <input v-model="personal.homeAddress2" type="text" placeholder="House no., street, barangay, city" :class="fieldClass('homeAddress2')" />
                 </div>
                 <div>
                   <label class="mb-1.5 block text-sm font-medium text-slate-700"># Years in the company <span class="text-rose-500">*</span></label>
@@ -761,7 +882,7 @@ onBeforeUnmount(() => {
                   <input v-model="personal.lineLeader" type="text" placeholder="Name" :class="fieldClass('lineLeader')" />
                 </div>
                 <div>
-                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Telephone number <span class="text-rose-500">*</span></label>
+                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Mobile number <span class="text-rose-500">*</span></label>
                   <input v-model="personal.telephoneNumber" type="tel" placeholder="09xx xxx xxxx" :class="fieldClass('telephoneNumber')" />
                 </div>
                 <div>
@@ -805,9 +926,9 @@ onBeforeUnmount(() => {
                     <p class="truncate text-sm font-medium text-slate-700">{{ idFileName || 'ID from your last application' }}</p>
                     <p class="text-xs text-blue-600">{{ idPreview ? 'Uploaded' : 'Using previous ID' }}</p>
                   </div>
-                  <button @click="triggerFilePicker" type="button"
+                  <button v-if="idPreview" @click="triggerFilePicker" type="button"
                     class="rounded-lg px-3 py-1.5 text-sm font-medium text-rose-600 transition hover:bg-rose-50">
-                    {{ idPreview ? 'Replace' : 'Replace' }}
+                    Replace
                   </button>
                 </div>
 
@@ -831,7 +952,11 @@ onBeforeUnmount(() => {
             <span v-else></span>
 
             <button v-if="step < totalSteps" @click="next" type="button"
-              class="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500/50">
+              :disabled="blockedByDelinquency"
+              class="rounded-lg px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              :class="blockedByDelinquency
+                ? 'cursor-not-allowed bg-slate-300'
+                : 'bg-blue-600 hover:bg-blue-700'">
               Continue
             </button>
             <button v-else @click="submit" type="button"

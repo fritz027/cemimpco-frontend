@@ -43,3 +43,7 @@ export const SaveLoanApplicationWithAttachements = (data: FormData, token: strin
 export const getMemberCompanyId = (token: string) => {
   return api.get(`/loan/member-id-picture`, { headers: { Authorization: `Bearer ${token}` }, responseType: 'blob' });
 }
+
+export const getMemberPersonalInformation = (token: string) => {
+  return api.get(`/loan/member-personal-information`, { headers: { Authorization: `Bearer ${token}` } });
+}
