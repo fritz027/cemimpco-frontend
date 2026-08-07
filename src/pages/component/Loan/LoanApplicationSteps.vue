@@ -851,7 +851,7 @@ onBeforeUnmount(() => {
 
               <div class="grid grid-cols-1 gap-x-5 gap-y-4 sm:grid-cols-2">
                 <div class="sm:col-span-2">
-                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Employeer's name <span class="text-rose-500">*</span></label>
+                  <label class="mb-1.5 block text-sm font-medium text-slate-700">Employer's name <span class="text-rose-500">*</span></label>
                   <input v-model="personal.employeerName" type="text" placeholder="Full name" :class="fieldClass('employeerName')" />
                 </div>
                 <div>

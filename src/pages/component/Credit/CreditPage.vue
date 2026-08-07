@@ -230,6 +230,7 @@ type Member = {
 
 // ✅ Field component without runtime template compiler (uses render function)
 const Field = defineComponent({
+  // eslint-disable-next-line vue/multi-word-component-names
   name: "Field",
   props: {
     label: { type: String, required: true },
@@ -351,9 +352,15 @@ async function searchMember() {
     alert.type = "success";
     alert.message = "Member loaded successfully.";
     amountToAvailInput.value?.focus();
-  } catch (e) {
+    setTimeout(() => {
+      alert.message = "";
+    }, 3000);
+  } catch {
     alert.type = "error";
     alert.message = "Failed to load member details. Please try again.";
+    setTimeout(() => {
+      alert.message = "";
+    }, 3000);
   } finally {
     loading.value = false;
   }
@@ -390,7 +397,7 @@ async function submit() {
 
     alert.type = "success";
     alert.message = "Transaction saved successfully.";
-  } catch (e) {
+  } catch {
     alert.type = "error";
     alert.message = "Submit failed. Please try again.";
   } finally {
@@ -438,8 +445,8 @@ function newTransaction() {
 
 async function logout() {
   try {
-    const res = await creditLogout();
-    
+    await creditLogout();
+
     creditStore.logout();
   } catch (error) {
     console.log(error)

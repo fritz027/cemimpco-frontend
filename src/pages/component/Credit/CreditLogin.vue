@@ -256,6 +256,8 @@ const errors = reactive({
   password: "",
 });
 
+
+
 // ── Validation ────────────────────────────────────────────────────────
 function validate(): boolean {
   errors.branch   = form.branch   ? "" : "Please select a store branch.";
@@ -290,7 +292,7 @@ async function setStores() {
       console.log(res.data.message);
       return;
     }
-    stores.value = res.data.stores.map((s: any) => ({
+    stores.value = res.data.stores.map((s: Store) => ({
       store_id: s.store_id,
       store_name: s.store_name,
       store_address: s.store_address,
@@ -325,8 +327,8 @@ async function onSubmit() {
 
     await router.push({ name: 'CreditPage' });
 
-  } catch (error: any) {
-    console.log(error);
+  } catch {
+    // console.log(error);
     serverError.value = "Invalid credentials"
       // error?.response?.data?.message ??
       // "Unable to connect. Please check your network and try again.";

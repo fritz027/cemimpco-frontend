@@ -248,16 +248,25 @@ router.beforeEach(async (to) => {
   const meberType = authStore.member?.type;
 
 
+
   // ✅ auth
+
+
   if (to.meta.requiresAuth && !isAuth) {
     return { name: "Login" };
   }
 
   // ✅ guest-only
-  if (to.meta.guestOnly && isAuth) {
-    return { name: "Profile" };
+  if (to.meta.guestOnly) {
+    if (to.name === "CreditLogin" && isCreditLogged) {
+      return { name: "CreditPage" };
+    }
+    if (to.name === "CreditLogin" && isAuth) {
+      return { name: "Profile" };
+    }
+    if (isAuth) return { name: "Profile" };
+    if (isCreditLogged) return { name: "CreditPage" };
   }
-
   // ✅ elecom-only
   if (to.meta.requiresElecom) {
     if (!isElecom) {

@@ -36,14 +36,14 @@ interface LoanListResponse {
   result?: Loan[]
 }
 
-type LoanStatus = 'Pending' | 'Approved' | 'Released' | 'Declined' | 'Cancelled'
+type LoanStatus = 'Pending' | 'Approved' | 'Released' | 'Disapproved' | 'Cancelled'
 
 // ---- Setup ---------------------------------------------------------------
 
 const authStore = useAuthStore()
 const router = useRouter()
 
-const statuses: LoanStatus[] = ['Pending', 'Approved', 'Released', 'Declined', 'Cancelled']
+const statuses: LoanStatus[] = ['Pending', 'Approved', 'Released', 'Disapproved', 'Cancelled']
 
 const activeTab = ref<LoanStatus>('Pending')
 const loans = ref<Loan[]>([])
@@ -102,7 +102,7 @@ const headers = computed<TableHeader[]>(() => {
   switch (activeTab.value) {
     case 'Pending':
       return baseColumns
-    case 'Declined':
+    case 'Disapproved':
       return [
         ...baseColumns,
         { text: 'Reason for disapprove', value: 'reason_for_disapprove' }
@@ -127,7 +127,7 @@ const loaders: Record<LoanStatus, { fetch: () => Promise<ApiResponse<LoanListRes
   Pending: { fetch: () => getLoanApplications('P', authStore.accessToken), dateDesc: '' },
   Approved: { fetch: () => getLoanApplications('A', authStore.accessToken), dateDesc: 'Approve Date' },
   Released: { fetch: () => getLoanApplications('R', authStore.accessToken), dateDesc: 'Approve Date' },
-  Declined: { fetch: () => getLoanApplications('D', authStore.accessToken), dateDesc: 'Declined Date' },
+  Disapproved: { fetch: () => getLoanApplications('D', authStore.accessToken), dateDesc: 'Disapproved Date' },
   Cancelled: { fetch: () => getLoanApplications('C', authStore.accessToken), dateDesc: 'Cancelled Date' }
 }
 
